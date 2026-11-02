@@ -1,0 +1,168 @@
+/**
+ * ተክሉ ጌታቸው ቢዝነስ - የኤፒአይ እና የማመሳሰያ ሞተር (API & Sync Client)
+ */
+
+const API = {
+  baseUrl: './api',
+  token: localStorage.getItem('teklu_token') || '',
+  user: JSON.parse(localStorage.getItem('teklu_user') || 'null'),
+  isOnline: navigator.onLine,
+  deviceUuid: localStorage.getItem('teklu_device_uuid') || '',
+
+  init() {
+    if (!this.deviceUuid) {
+      this.deviceUuid = 'dev-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now();
+      localStorage.setItem('teklu_device_uuid', this.deviceUuid);
+    }
+
+    // የመስመር ላይ እና ከመስመር ውጭ ክስተቶችን መከታተል
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      this.updateStatusBadge();
+      this.syncPending();
+    });
+
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+      this.updateStatusBadge();
+    });
+
+    // በየ 30 ሰከንዱ ማመሳሰልን ማረጋገጥ
+    setInterval(() => {
+      if (this.isOnline && this.token) {
+        this.syncPending();
+      }
+      this.updateStatusBadge();
+    }, 30000);
+
+    this.updateStatusBadge();
+  },
+
+  async request(endpoint, options = {}) {
+    const headers = {
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-Device-Id': this.deviceUuid,
+      ...(options.headers || {})
+    };
+
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    const config = {
+      ...options,
+      headers
+    };
+
+    try {
+      const response = await fetch(`${this.baseUrl}/${endpoint}`, config);
+      const data = await response.json();
+
+      if (!response.ok && response.status === 401) {
+        // የተጠቃሚ ቶከን ካበቃ
+        this.logout();
+        throw new Error(data.error || 'ክፍለ ጊዜው አልቋል፤ እባክዎ እንደገና ይግቡ');
+      }
+
+      return data;
+    } catch (err) {
+      // ኢንተርኔት ከሌለ ወይም ኔትወርክ ከተቋረጠ
+      if (!navigator.onLine || err.message.includes('Failed to fetch')) {
+        this.isOnline = false;
+        this.updateStatusBadge();
+        return {
+          success: false,
+          offline: true,
+          error: 'ኔትወርክ የለም (Offline Mode)'
+        };
+      }
+      throw err;
+    }
+  },
+
+  async login(username, password) {
+    const res = await this.request('auth.php?action=login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username,
+        password,
+        device_uuid: this.deviceUuid,
+        device_name: navigator.userAgent.includes('Mobile') ? 'Mobile Phone' : 'Browser App'
+      })
+    });
+
+    if (res.success) {
+      this.token = res.data.token;
+      this.user = res.data.user;
+      localStorage.setItem('teklu_token', this.token);
+      localStorage.setItem('teklu_user', JSON.stringify(this.user));
+
+      // ከመስመር ውጭ ለመጠቀም መሸጎጥ
+      await DB.cacheAuth(this.token, this.user);
+    }
+    return res;
+  },
+
+  logout() {
+    this.token = '';
+    this.user = null;
+    localStorage.removeItem('teklu_token');
+    localStorage.removeItem('teklu_user');
+    window.location.reload();
+  },
+
+  // ያልተመሳሰሉትን ግብይቶች ወደ ሰርቨር መላክ (Batch Sync)
+  async syncPending() {
+    if (!this.isOnline || !this.token) return;
+
+    const pending = await DB.getPendingTransactions();
+    if (pending.length === 0) {
+      this.updateStatusBadge();
+      return;
+    }
+
+    try {
+      const res = await this.request('sync.php', {
+        method: 'POST',
+        body: JSON.stringify({
+          device_uuid: this.deviceUuid,
+          transactions: pending
+        })
+      });
+
+      if (res.success && res.data) {
+        if (res.data.synced_uuids && res.data.synced_uuids.length > 0) {
+          await DB.markTransactionsSynced(res.data.synced_uuids);
+        }
+
+        if (res.data.server_state && res.data.server_state.products) {
+          await DB.cacheProducts(res.data.server_state.products);
+        }
+      }
+    } catch (e) {
+      console.warn('Sync attempt failed:', e);
+    } finally {
+      this.updateStatusBadge();
+    }
+  },
+
+  async updateStatusBadge() {
+    const badge = document.getElementById('connection-badge');
+    const syncCountEl = document.getElementById('pending-sync-count');
+    if (!badge) return;
+
+    const pendingCount = await DB.getPendingCount();
+
+    if (syncCountEl) {
+      syncCountEl.textContent = pendingCount > 0 ? `(${pendingCount})` : '';
+    }
+
+    if (this.isOnline) {
+      badge.className = 'status-badge online';
+      badge.innerHTML = `<span class="dot"></span> <span>${I18N.t('online')}</span> ${pendingCount > 0 ? `<span class="badge-pending">${pendingCount} ${I18N.t('pendingSync')}</span>` : ''}`;
+    } else {
+      badge.className = 'status-badge offline';
+      badge.innerHTML = `<span class="dot"></span> <span>${I18N.t('offline')}</span> ${pendingCount > 0 ? `<span class="badge-pending">${pendingCount} ${I18N.t('pendingSync')}</span>` : ''}`;
+    }
+  }
+};
