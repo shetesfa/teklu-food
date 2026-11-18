@@ -1,6 +1,6 @@
 <?php
 /**
- * የተክሉ ጌታቸው የከብት እርባታ እና የወተት ተዋጽኦ ማቀነባበሪያ ድርጅት
+ * ተክሉ ፉድ እና ቢዝነስ ማኔጅመንት (Teklu Food & Business Management)
  * የዳታቤዝ ግንኙነት ቅንብር (Database Connection)
  */
 
@@ -18,8 +18,8 @@ define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
 
 // የሲስተም ቋሚዎች
-define('APP_NAME_EN', 'Teklu Getachew Cattle Breeding & Dairy Processing Enterprise');
-define('APP_NAME_AM', 'ተክሉ ጌታቸው የከብት እርባታ እና የወተት ተዋጽኦ ማቀነባበሪያ ድርጅት');
+define('APP_NAME_EN', 'Teklu Food & Business Management');
+define('APP_NAME_AM', 'ተክሉ ፉድ እና ቢዝነስ ማኔጅመንት');
 define('CURRENCY_CODE', 'ETB');
 
 function get_db_connection(): PDO {

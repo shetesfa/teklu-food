@@ -1,6 +1,7 @@
 <?php
 /**
- * የዳሽቦርድ መረጃዎች API (Dashboard API)
+ * ተክሉ ምግብ ቤት (Teklu Restaurant Management)
+ * የዳሽቦርድ መረጃዎች API (Clean Dashboard API)
  */
 
 declare(strict_types=1);
@@ -19,15 +20,27 @@ $end_date = $_GET['end_date'] ?? date('Y-m-d');
 if ($filter === 'today') {
     $start_date = date('Y-m-d');
     $end_date = date('Y-m-d');
+} elseif ($filter === 'yesterday') {
+    $start_date = date('Y-m-d', strtotime('-1 day'));
+    $end_date = date('Y-m-d', strtotime('-1 day'));
 } elseif ($filter === 'week') {
     $start_date = date('Y-m-d', strtotime('-6 days'));
     $end_date = date('Y-m-d');
 } elseif ($filter === 'month') {
     $start_date = date('Y-m-01');
     $end_date = date('Y-m-d');
+} elseif ($filter === 'last_month') {
+    $start_date = date('Y-m-01', strtotime('first day of last month'));
+    $end_date = date('Y-m-t', strtotime('last day of last month'));
+} elseif ($filter === 'year') {
+    $start_date = date('Y-01-01');
+    $end_date = date('Y-m-d');
+} elseif ($filter === 'custom') {
+    $start_date = !empty($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d');
+    $end_date = !empty($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
 }
 
-// 1. የፋይናንስ ሂሳቦች ሚዛን (Current Actual Balances)
+// 1. የፋይናንስ ሂሳቦች ሚዛን (Financial Liquid Balances)
 $stmtAcc = $pdo->query("SELECT id, code, name_en, name_am, current_balance FROM financial_accounts WHERE is_active = 1");
 $accounts = $stmtAcc->fetchAll();
 $cash_balance = 0.0;
@@ -42,9 +55,9 @@ foreach ($accounts as $acc) {
     elseif ($acc['code'] === 'telebirr') $telebirr_balance += $bal;
     else $other_banks_balance += $bal;
 }
-$total_money_balance = $cash_balance + $cbe_balance + $telebirr_balance + $other_banks_balance;
+$total_liquid = $cash_balance + $cbe_balance + $telebirr_balance + $other_banks_balance;
 
-// 2. የተመረጠው ጊዜ ሽያጭ እና COGS (Sales & Cost of Goods Sold)
+// 2. ሽያጭ እና COGS (Sales & Cost of Goods Sold)
 $stmtSales = $pdo->prepare("
     SELECT 
         COUNT(s.id) as sales_count,
@@ -68,39 +81,39 @@ $stmtCogs = $pdo->prepare("
 ");
 $stmtCogs->execute([':start_d' => $start_date, ':end_d' => $end_date]);
 $total_cogs = (float)$stmtCogs->fetchColumn();
-$gross_profit = $total_sales - $total_cogs;
+$gross_profit = round($total_sales - $total_cogs, 2);
 
-// 3. የተመረጠው ጊዜ ግዢዎች (Purchases)
+// 3. ግዢዎች (Purchases)
 $stmtPurchases = $pdo->prepare("
     SELECT COALESCE(SUM(grand_total), 0) as total_purchases
     FROM purchases
-    WHERE purchase_date BETWEEN :start_d AND :end_d
+    WHERE DATE(purchase_date) BETWEEN :start_d AND :end_d
 ");
 $stmtPurchases->execute([':start_d' => $start_date, ':end_d' => $end_date]);
 $total_purchases = (float)$stmtPurchases->fetchColumn();
 
-// 4. የተመረጠው ጊዜ የስራ ማስኬጃ ወጪዎች (Operating Expenses)
+// 4. የስራ ማስኬጃ ወጪዎች (Operating Expenses)
 $stmtExpenses = $pdo->prepare("
     SELECT COALESCE(SUM(amount), 0) as total_expenses
     FROM expenses
-    WHERE expense_date BETWEEN :start_d AND :end_d
+    WHERE DATE(expense_date) BETWEEN :start_d AND :end_d
 ");
 $stmtExpenses->execute([':start_d' => $start_date, ':end_d' => $end_date]);
 $total_expenses = (float)$stmtExpenses->fetchColumn();
 
 // የተጣራ ትርፍ (Net Profit = Gross Profit - Operating Expenses)
-$net_profit = $gross_profit - $total_expenses;
+$net_profit = round($gross_profit - $total_expenses, 2);
 
-// 5. የተመረጠው ጊዜ የባለቤት መውጣት (Withdrawals) - ከስራ ማስኬጃ ወጪ ውጭ!
+// 5. የባለቤት መውጣት (Withdrawals) - ከስራ ማስኬጃ ወጪ ውጭ!
 $stmtWithdrawals = $pdo->prepare("
     SELECT COALESCE(SUM(amount), 0) as total_withdrawals
     FROM withdrawals
-    WHERE withdrawal_date BETWEEN :start_d AND :end_d
+    WHERE DATE(withdrawal_date) BETWEEN :start_d AND :end_d
 ");
 $stmtWithdrawals->execute([':start_d' => $start_date, ':end_d' => $end_date]);
 $total_withdrawals = (float)$stmtWithdrawals->fetchColumn();
 
-// 6. ጠቅላላ የክምችት ዋጋ (Total Stock Valuation)
+// 6. ጠቅላላ የክምችት ዋጋ (Total Inventory Valuation)
 $stmtStockVal = $pdo->query("
     SELECT COALESCE(SUM(sl.quantity * p.purchase_cost), 0) as stock_value
     FROM stock_levels sl
@@ -119,9 +132,14 @@ $stmtLowStock = $pdo->query("
     WHERE p.is_active = 1 AND p.min_stock_level > 0
     GROUP BY p.id
     HAVING current_stock <= p.min_stock_level
-    LIMIT 10
+    ORDER BY current_stock ASC
+    LIMIT 15
 ");
 $low_stock_products = $stmtLowStock->fetchAll();
+foreach ($low_stock_products as &$lsp) {
+    $lsp['min_stock_level'] = (float)$lsp['min_stock_level'];
+    $lsp['current_stock'] = (float)$lsp['current_stock'];
+}
 
 // 8. ያልተከፈሉ የአቅራቢ እና የደንበኛ ዕዳዎች
 $stmtDebt = $pdo->query("
@@ -141,29 +159,29 @@ send_success('ዳሽቦርድ መረጃ', [
         'end_date'   => $end_date,
     ],
     'actual_balances' => [
-        'cash'         => $cash_balance,
-        'cbe'          => $cbe_balance,
-        'telebirr'     => $telebirr_balance,
-        'other_banks'  => $other_banks_balance,
-        'total_liquid' => $total_money_balance,
+        'cash'         => round($cash_balance, 2),
+        'cbe'          => round($cbe_balance, 2),
+        'telebirr'     => round($telebirr_balance, 2),
+        'other_banks'  => round($other_banks_balance, 2),
+        'total_liquid' => round($total_liquid, 2),
     ],
     'operations' => [
-        'total_sales'       => $total_sales,
-        'total_purchases'   => $total_purchases,
-        'total_expenses'    => $total_expenses,
-        'total_withdrawals' => $total_withdrawals,
-        'total_cogs'        => $total_cogs,
+        'total_sales'       => round($total_sales, 2),
+        'total_purchases'   => round($total_purchases, 2),
+        'total_expenses'    => round($total_expenses, 2),
+        'total_withdrawals' => round($total_withdrawals, 2),
+        'total_cogs'        => round($total_cogs, 2),
         'gross_profit'      => $gross_profit,
         'net_profit'        => $net_profit,
     ],
     'stock' => [
-        'total_value'        => $total_stock_value,
+        'total_value'        => round($total_stock_value, 2),
         'low_stock_count'    => count($low_stock_products),
         'low_stock_products' => $low_stock_products,
     ],
     'debts' => [
-        'supplier_debt' => $supplier_debt,
-        'customer_debt' => $customer_debt,
+        'supplier_debt' => round($supplier_debt, 2),
+        'customer_debt' => round($customer_debt, 2),
     ],
     'accounts' => $accounts
 ]);

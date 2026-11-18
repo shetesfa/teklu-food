@@ -1,5 +1,5 @@
--- ተክሉ ጌታቸው የከብት እርባታ እና የወተት ተዋጽኦ ማቀነባበሪያ ድርጅት
--- ማዕከላዊ ዳታቤዝ ስኪማ (Central MariaDB Schema)
+-- ተክሉ ፉድ እና ቢዝነስ ማኔጅመንት (Teklu Food & Business Management)
+-- ማዕከላዊ ዳታቤዝ ስኪማ (Central MariaDB / MySQL Schema)
 
 CREATE DATABASE IF NOT EXISTS teklu_business_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE teklu_business_db;
@@ -41,29 +41,29 @@ CREATE TABLE IF NOT EXISTS categories (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 4. የዕቃ ማከማቻ ቦታዎች (Stock Locations)
+-- 4. የዕቃ ማከማቻ ቦታዎች (Stock Locations - ማዕከላዊ የድርጅት ክምችት)
 CREATE TABLE IF NOT EXISTS stock_locations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid VARCHAR(36) UNIQUE NOT NULL,
-    code VARCHAR(50) UNIQUE NOT NULL, -- 'farm_warehouse', 'restaurant_stock', 'main_storage'
+    code VARCHAR(50) UNIQUE NOT NULL, -- 'main_storage'
     name_en VARCHAR(100) NOT NULL,
     name_am VARCHAR(100) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 5. ምርቶች (Products)
+-- 5. ምርቶች እና ጥሬ ዕቃዎች (Products & Raw Materials)
 CREATE TABLE IF NOT EXISTS products (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid VARCHAR(36) UNIQUE NOT NULL,
     name_en VARCHAR(150) NOT NULL,
     name_am VARCHAR(150) NOT NULL,
     category_id INT NOT NULL,
-    unit ENUM('liter', 'kg', 'piece', 'plate', 'bottle', 'cup', 'box') NOT NULL,
+    unit VARCHAR(30) NOT NULL DEFAULT 'piece', -- 'kg', 'gram', 'liter', 'ml', 'piece', 'plate', etc.
     purchase_cost DECIMAL(12,2) DEFAULT 0.00,
     production_cost DECIMAL(12,2) DEFAULT 0.00,
-    selling_price DECIMAL(12,2) NOT NULL,
+    selling_price DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     min_stock_level DECIMAL(10,2) DEFAULT 0.00,
-    source ENUM('farm', 'external', 'restaurant') NOT NULL,
+    source VARCHAR(50) NOT NULL DEFAULT 'company',
     has_expiry TINYINT(1) DEFAULT 0,
     is_active TINYINT(1) DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS stock_levels (
     id INT AUTO_INCREMENT PRIMARY KEY,
     product_id INT NOT NULL,
     location_id INT NOT NULL,
-    quantity DECIMAL(12,2) DEFAULT 0.00,
+    quantity DECIMAL(12,3) DEFAULT 0.000,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_prod_loc (product_id, location_id),
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
@@ -87,11 +87,11 @@ CREATE TABLE IF NOT EXISTS stock_levels (
 CREATE TABLE IF NOT EXISTS stock_movements (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid VARCHAR(36) UNIQUE NOT NULL,
-    movement_type ENUM('opening', 'purchase', 'production', 'sale', 'transfer_in', 'transfer_out', 'adjustment', 'wastage', 'return') NOT NULL,
+    movement_type ENUM('opening', 'purchase', 'production', 'sale', 'adjustment', 'wastage', 'return') NOT NULL,
     product_id INT NOT NULL,
     from_location_id INT NULL,
     to_location_id INT NULL,
-    quantity DECIMAL(12,2) NOT NULL,
+    quantity DECIMAL(12,3) NOT NULL,
     unit_cost DECIMAL(12,2) DEFAULT 0.00,
     total_cost DECIMAL(12,2) DEFAULT 0.00,
     reference_id VARCHAR(36) NULL,
@@ -135,21 +135,25 @@ CREATE TABLE IF NOT EXISTS contacts (
     name VARCHAR(150) NOT NULL,
     phone VARCHAR(30) NULL,
     address VARCHAR(255) NULL,
+    notes TEXT NULL,
     outstanding_balance DECIMAL(12,2) DEFAULT 0.00,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 11. ግዢዎች (Purchases)
+-- 11. እቃ መረከቢያ እና ግዢዎች (Goods Receiving & Purchases)
 CREATE TABLE IF NOT EXISTS purchases (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid VARCHAR(36) UNIQUE NOT NULL,
     supplier_id INT NULL,
-    purchase_date DATE NOT NULL,
+    purchase_date DATETIME NOT NULL,
     total_amount DECIMAL(14,2) NOT NULL,
     additional_cost DECIMAL(12,2) DEFAULT 0.00,
     grand_total DECIMAL(14,2) NOT NULL,
+    paid_amount DECIMAL(14,2) DEFAULT 0.00,
+    unpaid_balance DECIMAL(14,2) DEFAULT 0.00,
     payment_status ENUM('paid', 'partial', 'credit') NOT NULL,
+    payment_account_id INT NULL,
     notes TEXT NULL,
     created_by INT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -163,7 +167,7 @@ CREATE TABLE IF NOT EXISTS purchase_items (
     purchase_id INT NOT NULL,
     product_id INT NOT NULL,
     location_id INT NOT NULL,
-    quantity DECIMAL(12,2) NOT NULL,
+    quantity DECIMAL(12,3) NOT NULL,
     unit VARCHAR(20) NOT NULL,
     unit_price DECIMAL(12,2) NOT NULL,
     total_price DECIMAL(14,2) NOT NULL,
@@ -196,7 +200,7 @@ CREATE TABLE IF NOT EXISTS sale_items (
     uuid VARCHAR(36) UNIQUE NOT NULL,
     sale_id INT NOT NULL,
     product_id INT NOT NULL,
-    quantity DECIMAL(12,2) NOT NULL,
+    quantity DECIMAL(12,3) NOT NULL,
     unit_price DECIMAL(12,2) NOT NULL,
     total_price DECIMAL(14,2) NOT NULL,
     unit_cost DECIMAL(12,2) DEFAULT 0.00,
@@ -209,7 +213,7 @@ CREATE TABLE IF NOT EXISTS payments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid VARCHAR(36) UNIQUE NOT NULL,
     transaction_type ENUM('sale', 'purchase', 'expense', 'withdrawal', 'customer_credit_settlement', 'supplier_debt_settlement', 'account_transfer') NOT NULL,
-    reference_id VARCHAR(36) NOT NULL,
+    reference_id VARCHAR(50) NOT NULL,
     account_id INT NOT NULL,
     amount DECIMAL(14,2) NOT NULL,
     payment_date DATETIME NOT NULL,
@@ -220,15 +224,15 @@ CREATE TABLE IF NOT EXISTS payments (
     FOREIGN KEY (created_by) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 14. ወጪዎች (Expenses)
+-- 14. የስራ ማስኬጃ ወጪዎች (Operating Expenses)
 CREATE TABLE IF NOT EXISTS expenses (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid VARCHAR(36) UNIQUE NOT NULL,
     category_id INT NOT NULL,
     account_id INT NOT NULL,
     amount DECIMAL(12,2) NOT NULL,
-    expense_date DATE NOT NULL,
-    department ENUM('farm', 'restaurant', 'general') NOT NULL,
+    expense_date DATETIME NOT NULL,
+    department VARCHAR(50) NOT NULL DEFAULT 'general',
     description TEXT NOT NULL,
     created_by INT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -243,59 +247,17 @@ CREATE TABLE IF NOT EXISTS withdrawals (
     uuid VARCHAR(36) UNIQUE NOT NULL,
     account_id INT NOT NULL,
     amount DECIMAL(12,2) NOT NULL,
-    withdrawal_date DATE NOT NULL,
+    withdrawal_date DATETIME NOT NULL,
     reason TEXT NOT NULL,
     recipient_name VARCHAR(150) NOT NULL,
+    notes TEXT NULL,
     created_by INT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (account_id) REFERENCES financial_accounts(id),
     FOREIGN KEY (created_by) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 16. የውስጥ ዝውውር - ከእርሻ ወደ ሬስቶራንት (Internal Transfers)
-CREATE TABLE IF NOT EXISTS internal_transfers (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    uuid VARCHAR(36) UNIQUE NOT NULL,
-    product_id INT NOT NULL,
-    quantity DECIMAL(12,2) NOT NULL,
-    unit VARCHAR(20) NOT NULL,
-    transfer_value DECIMAL(12,2) DEFAULT 0.00,
-    from_location_id INT NOT NULL,
-    to_location_id INT NOT NULL,
-    transfer_date DATETIME NOT NULL,
-    status ENUM('pending', 'received', 'rejected') DEFAULT 'pending',
-    notes TEXT NULL,
-    sender_user_id INT NOT NULL,
-    receiver_user_id INT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    received_at DATETIME NULL,
-    FOREIGN KEY (product_id) REFERENCES products(id),
-    FOREIGN KEY (from_location_id) REFERENCES stock_locations(id),
-    FOREIGN KEY (to_location_id) REFERENCES stock_locations(id),
-    FOREIGN KEY (sender_user_id) REFERENCES users(id),
-    FOREIGN KEY (receiver_user_id) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- 17. የእርሻና ወተት ምርት ማቀነባበሪያ (Farm Productions)
-CREATE TABLE IF NOT EXISTS farm_productions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    uuid VARCHAR(36) UNIQUE NOT NULL,
-    product_id INT NOT NULL,
-    quantity DECIMAL(12,2) NOT NULL,
-    unit VARCHAR(20) NOT NULL,
-    production_cost DECIMAL(12,2) DEFAULT 0.00,
-    production_date DATE NOT NULL,
-    expiry_date DATE NULL,
-    batch_number VARCHAR(50) NULL,
-    destination_location_id INT NOT NULL,
-    created_by INT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (product_id) REFERENCES products(id),
-    FOREIGN KEY (destination_location_id) REFERENCES stock_locations(id),
-    FOREIGN KEY (created_by) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- 18. ዕለታዊ ሂሳብ መዝጊያ (Daily Closings)
+-- 16. ዕለታዊ ሂሳብ መዝጊያ (Daily Closings)
 CREATE TABLE IF NOT EXISTS daily_closings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid VARCHAR(36) UNIQUE NOT NULL,
@@ -321,7 +283,7 @@ CREATE TABLE IF NOT EXISTS daily_closings (
     FOREIGN KEY (reopened_by) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 19. የኦዲት መዝገብ (Audit Logs)
+-- 17. የኦዲት መዝገብ (Audit Logs)
 CREATE TABLE IF NOT EXISTS audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid VARCHAR(36) UNIQUE NOT NULL,
@@ -334,29 +296,4 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     ip_address VARCHAR(45) NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- 20. የሬስቶራንት የወጥ ቤት እና አስተናጋጅ ትዕዛዞች (Future Ready: Kitchen & Waiter Orders)
-CREATE TABLE IF NOT EXISTS restaurant_orders (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    uuid VARCHAR(36) UNIQUE NOT NULL,
-    table_number VARCHAR(20) NOT NULL,
-    waiter_id INT NOT NULL,
-    status ENUM('pending', 'preparing', 'ready', 'served', 'completed', 'cancelled') DEFAULT 'pending',
-    notes TEXT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (waiter_id) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS restaurant_order_items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    uuid VARCHAR(36) UNIQUE NOT NULL,
-    order_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity DECIMAL(10,2) NOT NULL,
-    status ENUM('pending', 'preparing', 'ready', 'served', 'cancelled') DEFAULT 'pending',
-    notes VARCHAR(255) NULL,
-    FOREIGN KEY (order_id) REFERENCES restaurant_orders(id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

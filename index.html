@@ -3,13 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ተክሉ ጌታቸው - የከብት እርባታ እና የወተት ተዋጽኦ ማቀነባበሪያ</title>
+  <title>ተክሉ ምግብ ቤት</title>
   
   <!-- PWA Metadata -->
   <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#2d6a4f">
+  <meta name="theme-color" content="#059669">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ተክሉ ምግብ ቤት">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   
   <!-- CSS -->
@@ -17,478 +22,614 @@
 </head>
 <body>
 
-  <!-- 1. ቋሚ የላይኛው ራስጌ (Top App Bar) -->
+  <!-- =========================================================================
+       1. ቋሚ የላይኛው ራስጌ (Top App Bar)
+       ========================================================================= -->
   <header class="top-app-bar">
     <div class="brand-section">
       <img src="./icons/icon.svg" alt="Logo" class="brand-logo">
-      <div class="brand-title" id="app-title-el">ተክሉ ቢዝነስ</div>
+      <div class="brand-title" id="app-title-el">ተክሉ ምግብ ቤት</div>
     </div>
     <div class="top-bar-actions">
       <!-- የመስመር ሁኔታ (Online / Offline / Pending Badge) -->
-      <div id="connection-badge" class="status-badge online" onclick="API.syncPending()">
-        <span class="dot"></span> <span id="status-text">መስመር ላይ</span>
-        <span id="pending-sync-count"></span>
+      <div id="connection-badge" class="status-badge online" onclick="API.syncPending()" title="የኔትወርክ ሁኔታ">
+        <span class="dot"></span> <span id="status-text">በመስመር ላይ</span>
+        <span id="pending-sync-count" class="badge-count" style="display:none;">0</span>
       </div>
+      <!-- PWA የመጫኛ ቁልፍ -->
+      <button id="btn-install-pwa" class="btn-icon" style="display:none; color:var(--primary); font-weight:bold; font-size:0.8rem; background:rgba(5,150,105,0.1); border-radius:16px; padding:4px 8px;" onclick="triggerPwaInstall()" title="አፕሊኬሽኑን በስልክዎ ይጫኑ">📲 ጫን</button>
       <!-- ቋንቋ መቀየሪያ -->
       <button id="btn-lang-toggle" class="btn-icon" onclick="I18N.toggleLang()">EN</button>
-      <!-- መውጫ ቁልፍ -->
-      <button class="btn-icon" onclick="API.logout()" title="ውጣ">🚪</button>
+      <!-- ዘመናዊ መውጫ ቁልፍ (Modern Logout Button) -->
+      <button class="btn-icon btn-logout" onclick="API.logout()" title="ከሲስተሙ ውጣ" aria-label="ውጣ" style="display:inline-flex; align-items:center; gap:5px; padding:6px 12px; border-radius:8px; border:1px solid #fee2e2; background:#fef2f2; color:#b91c1c; font-weight:700; font-size:0.82rem; cursor:pointer; transition:all 0.2s ease;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span>ውጣ</span>
+      </button>
     </div>
   </header>
 
-  <!-- 2. ዋና የመተግበሪያ ይዘት (App Container) -->
+  <!-- PWA የመጫኛ ባነር (Mobile Install Prompt Banner) -->
+  <div id="pwa-install-banner" style="display:none; background:#ecfdf5; border-bottom:1px solid #a7f3d0; padding:8px 16px; justify-content:space-between; align-items:center; position:sticky; top:52px; z-index:90;">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <img src="./icons/icon-192.png" width="32" height="32" style="border-radius:8px;">
+      <div>
+        <div style="font-weight:700; font-size:0.84rem; color:#065f46;">ተክሉ ምግብ ቤት በስልክዎ ይጫኑ</div>
+        <div style="font-size:0.72rem; color:#047857;">ያለ ኢንተርኔት ከመስመር ውጭ በስልክ ይሰራል</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:6px;">
+      <button class="btn btn-primary" onclick="triggerPwaInstall()" style="padding:4px 12px; font-size:0.75rem; border-radius:6px;">ጫን</button>
+      <button class="btn btn-secondary" onclick="dismissPwaBanner()" style="padding:4px 8px; font-size:0.75rem; border-radius:6px;">✕</button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       2. የዴስክቶፕ የጎን አሰሳ (Desktop Sidebar Navigation - Hidden on Mobile)
+       ========================================================================= -->
+  <aside class="desktop-sidebar">
+    <div class="sidebar-brand">
+      <img src="./icons/icon.svg" alt="Logo" class="brand-logo">
+      <div class="sidebar-brand-title">ተክሉ ምግብ ቤት</div>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="sidebar-link active" onclick="switchPage('page-dashboard', this)">
+        <span class="sidebar-icon">📊</span> <span data-i18n="navDashboard">ዳሽቦርድ</span>
+      </button>
+      <button class="sidebar-link" onclick="switchPage('page-pos', this)">
+        <span class="sidebar-icon">🛒</span> <span data-i18n="navSales">ሽያጭ (POS)</span>
+      </button>
+      <button class="sidebar-link" onclick="switchPage('page-customer-debts', this)">
+        <span class="sidebar-icon">💳</span> <span data-i18n="navCustomerDebts">የደንበኛ ዱቤ</span>
+      </button>
+      <button class="sidebar-link" onclick="switchPage('page-receiving', this)">
+        <span class="sidebar-icon">📥</span> <span data-i18n="navReceiving">እቃ መረከቢያ</span>
+      </button>
+      <button class="sidebar-link" onclick="switchPage('page-recipes', this)">
+        <span class="sidebar-icon">🍲</span> <span data-i18n="navFoodRecipe">የምግብ ዝርዝር</span>
+      </button>
+      <button class="sidebar-link" onclick="switchPage('page-stock', this)">
+        <span class="sidebar-icon">📦</span> <span data-i18n="navStock">ክምችት</span>
+      </button>
+      <button class="sidebar-link" onclick="switchPage('page-withdrawals', this)">
+        <span class="sidebar-icon">💸</span> <span data-i18n="navWithdrawals">ገንዘብ መውጣት</span>
+      </button>
+      <button class="sidebar-link" onclick="switchPage('page-expenses', this)">
+        <span class="sidebar-icon">🧾</span> <span data-i18n="navExpenses">ወጪዎች</span>
+      </button>
+      <button class="sidebar-link" onclick="switchPage('page-suppliers', this)">
+        <span class="sidebar-icon">🏢</span> <span data-i18n="navSuppliers">አቅራቢዎች</span>
+      </button>
+      <button class="sidebar-link" onclick="switchPage('page-more', this)">
+        <span class="sidebar-icon">⚙️</span> <span data-i18n="navMore">ተጨማሪ</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- =========================================================================
+       3. ዋና የመተግበሪያ ይዘት (App Container)
+       ========================================================================= -->
   <main class="app-container">
 
-    <!-- A. ገጽ 1: ዳሽቦርድ (Dashboard Page) -->
+    <!-- -----------------------------------------------------------------------
+         ገጽ 1: ዳሽቦርድ (Dashboard Page)
+         ----------------------------------------------------------------------- -->
     <section id="page-dashboard" class="page active">
-      <!-- የጊዜ ማጣሪያ -->
-      <div class="btn-group">
-        <button class="btn btn-secondary btn-sm active" onclick="loadDashboard('today', this)" data-i18n="filterToday">ዛሬ</button>
-        <button class="btn btn-secondary btn-sm" onclick="loadDashboard('week', this)" data-i18n="filterWeek">ይህ ሳምንት</button>
-        <button class="btn btn-secondary btn-sm" onclick="loadDashboard('month', this)" data-i18n="filterMonth">ይህ ወር</button>
+      <!-- ዘመናዊ የጊዜ ማጣሪያ (Modern Interactive Filter Bar) -->
+      <div class="card" style="padding:10px 12px; margin-bottom:12px; background:var(--bg-card); border-radius:var(--radius-md);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:6px; font-weight:700; font-size:0.85rem; color:var(--text-main);">
+            <span>🗓️</span> <span>የዳሽቦርድ ጊዜ ማጣሪያ፡</span>
+          </div>
+          <!-- ፈጣን መምረጫ አዝራሮች -->
+          <div class="btn-group" id="dashboard-filter-group" style="margin-bottom:0;">
+            <button class="btn btn-secondary btn-sm active" onclick="loadDashboard('today', this)">ዛሬ</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadDashboard('yesterday', this)">ትናንት</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadDashboard('week', this)">ይህ ሳምንት</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadDashboard('month', this)">ይህ ወር</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadDashboard('last_month', this)">ያለፈው ወር</button>
+            <button class="btn btn-secondary btn-sm" onclick="toggleCustomDateFilter(this)">የቀን ገደብ ▾</button>
+          </div>
+        </div>
+
+        <!-- የተጠቃሚ ብጁ የቀን ገደብ መምረጫ (Custom Date Range Picker) -->
+        <div id="dash-custom-date-box" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-color);">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:4px;">
+              <label style="font-size:0.78rem; font-weight:700; color:var(--text-muted);">ከ፡</label>
+              <input type="date" id="dash-start-date" class="form-control" style="padding:4px 8px; font-size:0.82rem;">
+            </div>
+            <div style="display:flex; align-items:center; gap:4px;">
+              <label style="font-size:0.78rem; font-weight:700; color:var(--text-muted);">እስከ፡</label>
+              <input type="date" id="dash-end-date" class="form-control" style="padding:4px 8px; font-size:0.82rem;">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="applyCustomDateDashboard()" style="padding:5px 14px; font-size:0.82rem;">አሳይ</button>
+          </div>
+        </div>
       </div>
 
-      <!-- የገንዘብ ሚዛን ካርድ (Liquid Balances) -->
+      <!-- በእጅና በባንክ ያሉ የገንዘብ ሂሳቦች (Liquid Balances) -->
       <div class="card">
-        <div class="card-title">
-          <span>💰 የፋይናንስ ሂሳቦች ሚዛን</span>
-          <span id="dash-total-liquid" class="stat-value money">0.00 ETB</span>
+        <div class="card-header-clean">
+          <div class="card-title"><span>💰</span> <span data-i18n="financialAccountsBalance">በእጅና በባንክ ያሉ የገንዘብ ሂሳቦች</span></div>
+          <span id="dash-total-liquid" class="stat-value primary" style="font-size:1.15rem;">0.00 ETB</span>
         </div>
         <div class="stats-grid">
-          <div class="stat-box">
+          <div class="stat-box highlight">
             <div class="stat-label" data-i18n="cashBalance">የእጅ ጥሬ ገንዘብ</div>
-            <div id="dash-cash" class="stat-value money">0.00 ETB</div>
+            <div id="dash-cash" class="stat-value primary">0.00 ETB</div>
           </div>
-          <div class="stat-box">
+          <div class="stat-box info-highlight">
             <div class="stat-label" data-i18n="telebirrBalance">ቴሌብር (Telebirr)</div>
-            <div id="dash-telebirr" class="stat-value money">0.00 ETB</div>
+            <div id="dash-telebirr" class="stat-value info">0.00 ETB</div>
           </div>
           <div class="stat-box">
             <div class="stat-label" data-i18n="cbeBalance">ንግድ ባንክ (CBE)</div>
-            <div id="dash-cbe" class="stat-value money">0.00 ETB</div>
+            <div id="dash-cbe" class="stat-value">0.00 ETB</div>
           </div>
           <div class="stat-box">
             <div class="stat-label" data-i18n="otherBanksBalance">ሌሎች ባንኮች</div>
-            <div id="dash-otherbanks" class="stat-value money">0.00 ETB</div>
+            <div id="dash-otherbanks" class="stat-value">0.00 ETB</div>
           </div>
         </div>
       </div>
 
-      <!-- የስራ ክንውኖች እና የትርፍ ግምት (Operations & Estimated Profit) -->
+      <!-- የሽያጭ፣ የወጪ እና የትርፍ ማጠቃለያ (Operations & Real Profit) -->
       <div class="card">
-        <div class="card-title">
-          <span>📊 የስራ ክንውኖች እና ትርፍ</span>
+        <div class="card-header-clean">
+          <div class="card-title">
+            <span>📊</span> <span>የሽያጭ፣ የወጪ እና የትርፍ ማጠቃለያ</span>
+            <span id="dash-period-badge" class="badge-tag info" style="margin-left:6px; font-size:0.75rem;">የዛሬ</span>
+          </div>
         </div>
         <div class="stats-grid">
           <div class="stat-box">
-            <div class="stat-label" data-i18n="todaySales">ሽያጭ</div>
-            <div id="dash-sales" class="stat-value">0.00 ETB</div>
+            <div class="stat-label" id="lbl-dash-sales">ሽያጭ</div>
+            <div id="dash-sales" class="stat-value primary">0.00 ETB</div>
           </div>
           <div class="stat-box">
-            <div class="stat-label" data-i18n="todayPurchases">ግዢ</div>
+            <div class="stat-label" id="lbl-dash-purchases">ግዢ</div>
             <div id="dash-purchases" class="stat-value">0.00 ETB</div>
           </div>
-          <div class="stat-box">
-            <div class="stat-label" data-i18n="todayExpenses">የስራ ማስኬጃ ወጪ</div>
-            <div id="dash-expenses" class="stat-value expense">0.00 ETB</div>
+          <div class="stat-box danger-highlight">
+            <div class="stat-label" id="lbl-dash-expenses">የስራ ማስኬጃ ወጪ</div>
+            <div id="dash-expenses" class="stat-value danger">0.00 ETB</div>
           </div>
-          <div class="stat-box">
-            <div class="stat-label" data-i18n="todayWithdrawals">የባለቤት መውጣት</div>
-            <div id="dash-withdrawals" class="stat-value">0.00 ETB</div>
+          <div class="stat-box warning-highlight">
+            <div class="stat-label" id="lbl-dash-withdrawals">የወጣ ገንዘብ (መውጣት)</div>
+            <div id="dash-withdrawals" class="stat-value warning">0.00 ETB</div>
           </div>
-          <div class="stat-box" style="grid-column: span 2; background: #e8f5e9;">
-            <div class="stat-label" data-i18n="estimatedGrossProfit">የተገመተ ጠቅላላ ትርፍ (Sales - COGS)</div>
-            <div id="dash-gross-profit" class="stat-value profit">0.00 ETB</div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+          <div class="stat-box highlight" style="padding:10px;">
+            <div class="stat-label" data-i18n="estimatedGrossProfit">ጠቅላላ ትርፍ (የምግብ ማዘጋጃ ወጪ ተቀንሶ)</div>
+            <div id="dash-gross-profit" class="stat-value primary" style="font-size:1.15rem;">0.00 ETB</div>
           </div>
-          <div class="stat-box" style="grid-column: span 2; background: #e0f2fe;">
-            <div class="stat-label" data-i18n="estimatedNetProfit">የተገመተ የተጣራ ትርፍ (Gross Profit - Expenses)</div>
-            <div id="dash-net-profit" class="stat-value profit">0.00 ETB</div>
+          <div class="stat-box info-highlight" style="padding:10px;">
+            <div class="stat-label" data-i18n="estimatedNetProfit">የተጣራ ትርፍ (ሁሉም ወጪዎች ተቀንሰው)</div>
+            <div id="dash-net-profit" class="stat-value info" style="font-size:1.15rem;">0.00 ETB</div>
           </div>
         </div>
       </div>
 
-      <!-- የክምችት ዋጋ እና ዝቅተኛ ክምችት ማስጠንቀቂያ -->
+      <!-- የክምችት ሁኔታ እና ዝቅተኛ ክምችት ማስጠንቀቂያ (Clear Inventory Valuation & Alerts) -->
       <div class="card">
-        <div class="card-title">
-          <span>📦 የክምችት ሁኔታ</span>
-          <span id="dash-stock-value" class="stat-value" style="font-size:0.95rem;">0.00 ETB</span>
+        <div class="card-header-clean">
+          <div class="card-title"><span>📦</span> <span>ጠቅላላ የክምችት ሁኔታ እና ዋጋ</span></div>
         </div>
-        <div id="dash-low-stock-container">
-          <p style="color:var(--text-muted); font-size:0.85rem;">ዝቅተኛ ክምችት ያላቸው እቃዎች የሉም</p>
+        <div class="stats-grid" style="margin-bottom:10px;">
+          <div class="stat-box highlight" style="padding:10px;">
+            <div class="stat-label">ጠቅላላ የክምችት ዋጋ (የጥሬ እቃዎች ግምት)</div>
+            <div id="dash-stock-value" class="stat-value primary" style="font-size:1.15rem;">0.00 ETB</div>
+          </div>
+        </div>
+
+        <!-- ዝቅተኛ ክምችት ማስጠንቀቂያ የተለየ ንዑስ ክፍል -->
+        <div style="border-top:1px solid var(--border-color); padding-top:8px; margin-top:6px;">
+          <div style="font-size:0.82rem; font-weight:700; color:var(--text-main); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+            <span>⚠️</span> <span>ዝቅተኛ ክምችት ማስጠንቀቂያ፡</span>
+          </div>
+          <div id="dash-low-stock-container">
+            <p style="color:#059669; font-size:0.82rem; text-align:center; padding:6px; background:#ecfdf5; border-radius:var(--radius-sm);">✅ ሁሉም ጥሬ እቃዎች በቂ ክምችት አላቸው</p>
+          </div>
         </div>
       </div>
 
       <!-- ያልተከፈሉ ዕዳዎች -->
       <div class="card">
-        <div class="card-title">
-          <span>⚖️ ያልተከፈሉ ዕዳዎች</span>
+        <div class="card-header-clean">
+          <div class="card-title"><span>⚖️</span> <span>ያልተከፈሉ ዕዳዎች</span></div>
         </div>
         <div class="stats-grid">
-          <div class="stat-box">
+          <div class="stat-box danger-highlight">
             <div class="stat-label" data-i18n="supplierDebt">ለአቅራቢ የሚከፈል ዕዳ</div>
-            <div id="dash-supplier-debt" class="stat-value expense">0.00 ETB</div>
+            <div id="dash-supplier-debt" class="stat-value danger">0.00 ETB</div>
           </div>
-          <div class="stat-box">
-            <div class="stat-label" data-i18n="customerDebt">ከደንበኛ የሚሰበሰብ ዕዳ</div>
-            <div id="dash-customer-debt" class="stat-value money">0.00 ETB</div>
+          <div class="stat-box highlight">
+            <div class="stat-label" data-i18n="customerDebt">ከደንበኛ የሚሰበሰብ ዱቤ</div>
+            <div id="dash-customer-debt" class="stat-value primary">0.00 ETB</div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- B. ገጽ 2: ሽያጭ / POS (Restaurant & Sales POS Page) -->
+    <!-- -----------------------------------------------------------------------
+         ገጽ 2: ሽያጭ / POS (Sales & POS Page)
+         ----------------------------------------------------------------------- -->
     <section id="page-pos" class="page">
-      <div class="card" style="padding:10px;">
-        <!-- የምርት ፍለጋ ባር -->
-        <input type="text" id="pos-search-input" class="form-control" placeholder="ምርት ወይም ምግብ ይፈልጉ..." oninput="renderPosProducts()">
-        
-        <!-- የምርቶች መረጣ Grid -->
-        <div id="pos-products-grid" class="pos-product-grid" style="margin-top:10px;">
+      <div class="pos-layout">
+        <!-- የምርቶች መረጣ ክፍል -->
+        <div>
+          <div class="card" style="padding:10px;">
+            <input type="text" id="pos-search-input" class="form-control" placeholder="ምርት ወይም ምግብ ይፈልጉ..." oninput="renderPosProducts()">
+            
+            <!-- የምድብ ማጣሪያ -->
+            <div class="btn-group" style="margin-top:8px; margin-bottom:4px;">
+              <button class="btn btn-secondary btn-sm active" onclick="filterPosCategory('all', this)">ሁሉም</button>
+              <button class="btn btn-secondary btn-sm" onclick="filterPosCategory('food', this)">ምግቦች</button>
+              <button class="btn btn-secondary btn-sm" onclick="filterPosCategory('packaged', this)">የታሸጉ</button>
+              <button class="btn btn-secondary btn-sm" onclick="filterPosCategory('beverage', this)">መጠጦች</button>
+            </div>
+
+            <!-- የምርቶች Grid -->
+            <div id="pos-products-grid" class="pos-product-grid">
+              <!-- በ JS ይሞላል -->
+            </div>
+          </div>
+        </div>
+
+        <!-- የሽያጭ ቅርጫት (Cart Section) -->
+        <div class="cart-section">
+          <div class="card-header-clean" style="margin-bottom:8px;">
+            <div class="card-title">
+              <span>🛒</span> <span data-i18n="cart">የሽያጭ ቅርጫት</span> (<span id="cart-items-count">0</span>)
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="clearCart()">አጽዳ</button>
+          </div>
+          
+          <div id="cart-items-list" style="max-height:260px; overflow-y:auto;">
+            <p style="color:var(--text-muted); text-align:center; padding:16px; font-size:0.85rem;" data-i18n="emptyCart">ምንም የተመረጠ ዕቃ የለም</p>
+          </div>
+
+          <div style="margin-top:10px; border-top:1px solid var(--border-color); padding-top:8px;">
+            <div class="receipt-row">
+              <span data-i18n="subtotal">ንዑስ ድምር</span>
+              <span id="cart-subtotal" style="font-weight:700;">0.00 ETB</span>
+            </div>
+            <div class="receipt-row" style="align-items:center; margin:4px 0;">
+              <span data-i18n="discount">ቅናሽ (ETB)</span>
+              <input type="number" id="cart-discount" class="form-control" value="0" min="0" style="width:90px; height:32px; text-align:right;" oninput="updateCartTotals()">
+            </div>
+            <div class="receipt-row" style="font-size:1.15rem; font-weight:800; color:var(--primary); margin-top:4px;">
+              <span data-i18n="grandTotal">ጠቅላላ ድምር</span>
+              <span id="cart-grand-total">0.00 ETB</span>
+            </div>
+          </div>
+
+          <!-- የክፍያ ዘዴ -->
+          <div style="margin-top:10px;">
+            <label class="form-label" data-i18n="paymentMethod">የክፍያ ዘዴ</label>
+            <select id="pos-payment-method" class="form-control" onchange="togglePosPaymentDetails()">
+              <option value="cash">ጥሬ ገንዘብ (Cash)</option>
+              <option value="telebirr">ቴሌብር (Telebirr)</option>
+              <option value="cbe">የኢትዮጵያ ንግድ ባንክ (CBE)</option>
+              <option value="mixed">ድብልቅ ክፍያ (Mixed)</option>
+              <option value="credit">በብድር (Credit Sale)</option>
+            </select>
+          </div>
+
+          <!-- ድብልቅ ክፍያ ማስገቢያ -->
+          <div id="pos-mixed-payment-box" style="display:none; margin-top:8px; background:var(--bg-subtle); padding:8px; border-radius:var(--radius-sm);">
+            <div class="form-group" style="margin-bottom:6px;">
+              <label class="form-label">ጥሬ ገንዘብ</label>
+              <input type="number" id="pos-mixed-cash" class="form-control" value="0" min="0">
+            </div>
+            <div class="form-group" style="margin-bottom:6px;">
+              <label class="form-label">ቴሌብር</label>
+              <input type="number" id="pos-mixed-telebirr" class="form-control" value="0" min="0">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">ንግድ ባንክ</label>
+              <input type="number" id="pos-mixed-cbe" class="form-control" value="0" min="0">
+            </div>
+          </div>
+
+          <!-- ደንበኛ (በብድር ሲሸጥ ብቻ የሚታይ) -->
+          <div id="pos-customer-box" style="display:none; margin-top:10px; background:#fef2f2; border:1px solid #fecaca; padding:10px; border-radius:var(--radius-sm);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <label class="form-label" style="color:#991b1b; font-weight:700; margin-bottom:0;">የዱቤ ደንበኛ ይምረጡ (ግዴታ)</label>
+            </div>
+            <select id="pos-customer-select" class="form-control" style="background:#fff;">
+              <option value="">-- ደንበኛ ይምረጡ --</option>
+            </select>
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openModal('modal-new-customer')" style="margin-top:6px; width:100%; font-size:0.8rem;">+ አዲስ ደንበኛ መዝግብ</button>
+          </div>
+
+          <div style="margin-top:14px;">
+            <button class="btn btn-primary" onclick="submitSale()" data-i18n="confirmSale">ሽያጩን አረጋግጥ</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- -----------------------------------------------------------------------
+         ገጽ 2.1: የደንበኛ ዱቤ መቆጣጠሪያ (Customer Debts & Credit Ledger Page)
+         ----------------------------------------------------------------------- -->
+    <section id="page-customer-debts" class="page">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+        <h3 style="font-size:1.05rem; font-weight:800; color:var(--text-main);">💳 የደንበኞች ዱቤ እና የብድር መቆጣጠሪያ</h3>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-customer')">+ አዲስ ደንበኛ መዝግብ</button>
+      </div>
+
+      <!-- የዱቤ ማጠቃለያ ካርዶች -->
+      <div class="stats-grid" style="margin-bottom:12px;">
+        <div class="stat-box danger-highlight">
+          <div class="stat-label">ጠቅላላ በደንበኞች ላይ ያለ ቀሪ ዱቤ</div>
+          <div id="cust-total-unpaid-debt" class="stat-value danger" style="font-size:1.2rem;">0.00 ETB</div>
+        </div>
+        <div class="stat-box highlight">
+          <div class="stat-label">የዱቤ ደንበኞች ብዛት</div>
+          <div id="cust-total-debtors-count" class="stat-value primary">0 ደንበኞች</div>
+        </div>
+      </div>
+
+      <!-- የደንበኞች ዝርዝር ካርድ -->
+      <div class="card">
+        <div class="card-header-clean">
+          <div class="card-title"><span>👥</span> <span>የደንበኞች እና የዱቤ መዝገብ</span></div>
+          <span id="cust-badge-count" class="badge-tag neutral">0 ደንበኞች</span>
+        </div>
+
+        <input type="text" id="cust-search-input" class="form-control" placeholder="ደንበኛ በስም ወይም በስልክ ፈልግ..." oninput="filterCustomerDebtsList()" style="margin-bottom:10px;">
+
+        <div id="customer-debts-list-container">
+          <!-- በ JS በካርድ መልክ ይሞላል -->
+        </div>
+      </div>
+    </section>
+
+    <!-- -----------------------------------------------------------------------
+         ገጽ 3: እቃ መረከቢያ (Goods Receiving Page - Dedicated Core Module)
+         ----------------------------------------------------------------------- -->
+    <section id="page-receiving" class="page">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="font-size:1.05rem; font-weight:800; color:var(--text-main);" data-i18n="receivingTitle">እቃ መረከቢያ (Goods Receiving)</h3>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-receive-goods')">+ አዲስ ርክክብ</button>
+      </div>
+
+      <!-- ፈጣን መረጃ ካርድ -->
+      <div class="card" style="padding:10px; background:var(--primary-soft); border-color:var(--primary-border);">
+        <p style="font-size:0.8rem; color:var(--primary-dark); line-height:1.4;">
+          💡 <strong>የእቃ መረከቢያ ደንብ፡</strong> ከአቅራቢዎች የተረከቧቸው እቃዎች በቀጥታ ክምችት ይጨምራሉ። ወዲያው ያልተከፈለ ገንዘብ ካለ እንደ አቅራቢ ዕዳ ይመዘገባል፤ የቀደመው ዕዳ ሳይሰረዝ በታሪክ ውስጥ ይጠበቃል።
+        </p>
+      </div>
+
+      <!-- የቅርብ ጊዜ ርክክቦች ዝርዝር -->
+      <div class="card">
+        <div class="card-header-clean">
+          <div class="card-title"><span>📥</span> <span data-i18n="receivingHistory">የቅርብ ጊዜ የእቃ ርክክቦች</span></div>
+          <span id="receiving-count-badge" class="badge-tag neutral">0 ርክክቦች</span>
+        </div>
+        <div id="receiving-list-container">
+          <!-- በ JS በካርድ መልክ ይሞላል -->
+        </div>
+      </div>
+    </section>
+
+    <!-- -----------------------------------------------------------------------
+         ገጽ 4: የአቅራቢ ሂሳብ ዝርዝር እና ታሪክ (Supplier Statement & Ledger View)
+         ----------------------------------------------------------------------- -->
+    <section id="page-supplier-details" class="page">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <button class="btn btn-secondary btn-sm" onclick="switchPage('page-suppliers', this)">← ተመለስ</button>
+        <h3 id="stmt-supplier-name" style="font-size:1.1rem; font-weight:800; color:var(--text-main);">የአቅራቢ ሂሳብ</h3>
+      </div>
+
+      <!-- የአቅራቢ ማጠቃለያ ካርድ -->
+      <div class="card">
+        <div class="card-header-clean">
+          <div>
+            <div id="stmt-supplier-phone" style="font-size:0.85rem; color:var(--text-secondary); font-weight:600;">ስልክ፡ -</div>
+            <div id="stmt-supplier-address" style="font-size:0.75rem; color:var(--text-muted);">አድራሻ፡ -</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openSupplierPaymentModal()" data-i18n="makePayment">💳 ክፍያ ፈጽም</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label" data-i18n="totalGoodsReceived">የተረከቧቸው እቃዎች</div>
+            <div id="stmt-goods-units" class="stat-value">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label" data-i18n="totalPurchasesAmount">ጠቅላላ የግዢ ዋጋ</div>
+            <div id="stmt-total-purchase" class="stat-value">0.00 ETB</div>
+          </div>
+          <div class="stat-box highlight">
+            <div class="stat-label" data-i18n="totalPaymentsMade">ጠቅላላ የተከፈለው</div>
+            <div id="stmt-total-paid" class="stat-value primary">0.00 ETB</div>
+          </div>
+          <div class="stat-box danger-highlight">
+            <div class="stat-label" data-i18n="outstandingBalance">ያልተከፈለ ቀሪ ዕዳ</div>
+            <div id="stmt-outstanding-balance" class="stat-value danger">0.00 ETB</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ማጣሪያዎች -->
+      <div class="btn-group">
+        <button class="btn btn-secondary btn-sm active" onclick="filterSupplierTx('all', this)" data-i18n="allTransactions">ሁሉም</button>
+        <button class="btn btn-secondary btn-sm" onclick="filterSupplierTx('paid', this)" data-i18n="filterPaid">የተከፈሉ</button>
+        <button class="btn btn-secondary btn-sm" onclick="filterSupplierTx('partial', this)" data-i18n="filterPartial">በከፊል</button>
+        <button class="btn btn-secondary btn-sm" onclick="filterSupplierTx('unpaid', this)" data-i18n="filterUnpaid">ያልተከፈሉ</button>
+      </div>
+
+      <!-- የርክክቦች ታሪክ -->
+      <div class="card">
+        <div class="card-title-sm" data-i18n="receivingHistory">የእቃ ርክክቦች ታሪክ</div>
+        <div id="stmt-purchases-container">
           <!-- በ JS ይሞላል -->
         </div>
       </div>
 
-      <!-- የሽያጭ ቅርጫት (Cart Section) -->
-      <div class="cart-section">
-        <div class="card-title">
-          <span>🛒 <span data-i18n="cart">የሽያጭ ቅርጫት</span> (<span id="cart-items-count">0</span>)</span>
-          <button class="btn btn-secondary btn-sm" onclick="clearCart()">አጽዳ</button>
-        </div>
-        
-        <div id="cart-items-list">
-          <p style="color:var(--text-muted); text-align:center; padding:12px;" data-i18n="emptyCart">ምንም የተመረጠ ዕቃ የለም</p>
-        </div>
-
-        <div style="margin-top:12px; border-top:1px solid var(--border-color); padding-top:10px;">
-          <div class="receipt-row">
-            <span data-i18n="subtotal">ንዑስ ድምር</span>
-            <span id="cart-subtotal" style="font-weight:700;">0.00 ETB</span>
-          </div>
-          <div class="receipt-row" style="align-items:center; margin:4px 0;">
-            <span data-i18n="discount">ቅናሽ (ETB)</span>
-            <input type="number" id="cart-discount" class="form-control" value="0" min="0" style="width:100px; height:32px; text-align:right;" oninput="updateCartTotals()">
-          </div>
-          <div class="receipt-row" style="font-size:1.1rem; font-weight:800; color:var(--primary); margin-top:6px;">
-            <span data-i18n="grandTotal">ጠቅላላ ድምር</span>
-            <span id="cart-grand-total">0.00 ETB</span>
-          </div>
-        </div>
-
-        <!-- የክፍያ አማራጭ -->
-        <div style="margin-top:14px;">
-          <label class="form-label" data-i18n="paymentMethod">የክፍያ ዘዴ</label>
-          <select id="pos-payment-method" class="form-control" onchange="togglePosPaymentDetails()">
-            <option value="cash">ጥሬ ገንዘብ (Cash)</option>
-            <option value="telebirr">ቴሌብር (Telebirr)</option>
-            <option value="cbe">የኢትዮጵያ ንግድ ባንክ (CBE)</option>
-            <option value="mixed">ድብልቅ ክፍያ (Mixed)</option>
-            <option value="credit">በብድር (Credit Sale)</option>
-          </select>
-        </div>
-
-        <!-- ድብልቅ ክፍያ ማስገቢያ -->
-        <div id="pos-mixed-payment-box" style="display:none; margin-top:10px; background:var(--bg-main); padding:10px; border-radius:var(--radius-sm);">
-          <div class="form-group">
-            <label class="form-label">ጥሬ ገንዘብ መጠን</label>
-            <input type="number" id="pos-mixed-cash" class="form-control" value="0" min="0">
-          </div>
-          <div class="form-group">
-            <label class="form-label">ቴሌብር መጠን</label>
-            <input type="number" id="pos-mixed-telebirr" class="form-control" value="0" min="0">
-          </div>
-          <div class="form-group">
-            <label class="form-label">ንግድ ባንክ መጠን</label>
-            <input type="number" id="pos-mixed-cbe" class="form-control" value="0" min="0">
-          </div>
-        </div>
-
-        <!-- የደንበኛ መምረጫ (ለብድር ሽያጭ ግዴታ ነው) -->
-        <div id="pos-customer-box" style="margin-top:10px;">
-          <label class="form-label" data-i18n="selectCustomer">ደንበኛ (አማራጭ)</label>
-          <select id="pos-customer-select" class="form-control">
-            <option value="">-- ተራ ደንበኛ (Walk-in Customer) --</option>
-          </select>
-        </div>
-
-        <!-- ሽያጭ ማረጋገጫ ቁልፍ -->
-        <div style="margin-top:16px;">
-          <button class="btn btn-primary" onclick="submitSale()" data-i18n="confirmSale">ሽያጩን አረጋግጥ</button>
+      <!-- የክፍያዎች ታሪክ -->
+      <div class="card">
+        <div class="card-title-sm" data-i18n="paymentHistory">የክፍያዎች ታሪክ</div>
+        <div id="stmt-payments-container">
+          <!-- በ JS ይሞላል -->
         </div>
       </div>
     </section>
 
-    <!-- C. ገጽ 3: ክምችት እና ምርቶች (Stock & Inventory Page) -->
+    <!-- -----------------------------------------------------------------------
+         ገጽ 5: የምግብ ዝርዝር እና ማዘጋጃ (Food Dishes & Preparation Page)
+         ----------------------------------------------------------------------- -->
+    <section id="page-recipes" class="page">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="font-size:1.05rem; font-weight:800; color:var(--text-main);" data-i18n="foodRecipeTitle">የምግብ ዝርዝር እና ማዘጋጃ</h3>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-create-food-recipe')" data-i18n="createNewRecipe">+ አዲስ ምግብ መዝግብ</button>
+      </div>
+
+      <div class="card" style="padding:10px; background:var(--primary-soft); border-color:var(--primary-border);">
+        <p style="font-size:0.8rem; color:var(--primary-dark); line-height:1.4;">
+          🍲 <strong>የምግብ አዘገጃጀት መርህ፡</strong> አስቀድመው የተመዘገቡ ጥሬ እቃዎችን (ሽንኩርት፣ ቲማቲም፣ ዘይት፣ ስጋ...) በመጠቀም ምግብ ይፈጠራል። ሽያጭ ሲካሄድ ግብዓቶቹ በራስ-ሰር ከክምችት ይቀነሳሉ!
+        </p>
+      </div>
+
+      <!-- የተመዘገቡ ምግቦች ካርዶች -->
+      <div class="card">
+        <div class="card-header-clean">
+          <div class="card-title"><span>🍽️</span> <span>የተዘጋጁ ምግቦች ዝርዝር</span></div>
+          <span id="recipes-count-badge" class="badge-tag paid">0 ምግቦች</span>
+        </div>
+        <div id="food-recipes-cards-container">
+          <!-- በ JS በካርድ መልክ ይሞላል -->
+        </div>
+      </div>
+    </section>
+
+    <!-- -----------------------------------------------------------------------
+         ገጽ 6: ክምችት እና ምርቶች (Stock & Inventory Page)
+         ----------------------------------------------------------------------- -->
     <section id="page-stock" class="page">
-      <div style="display:flex; gap:8px; margin-bottom:12px;">
-        <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-product')" data-i18n="registerProduct">+ አዲስ ምርት</button>
-        <button class="btn btn-secondary btn-sm" onclick="openModal('modal-opening-stock')" data-i18n="openingStock">የመክፈቻ ክምችት</button>
+      <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-product')" data-i18n="registerProduct">+ አዲስ ምርት / ጥሬ ዕቃ</button>
         <button class="btn btn-secondary btn-sm" onclick="openModal('modal-adjust-stock')" data-i18n="adjustStock">ክምችት ማስተካከያ</button>
       </div>
 
       <div class="card">
-        <div class="card-title">
-          <span data-i18n="productsTitle">የምርቶች እና ክምችት መዝገብ</span>
-          <span id="products-count" class="badge-tag farm">0 ምርቶች</span>
+        <div class="card-header-clean">
+          <div class="card-title"><span>📦</span> <span data-i18n="productsTitle">የምርቶች እና ጥሬ ዕቃዎች መዝገብ</span></div>
+          <span id="products-count-badge" class="badge-tag neutral">0 ምርቶች</span>
         </div>
-        <input type="text" id="stock-search-input" class="form-control" placeholder="በስም ወይም በምድብ ፈልግ..." oninput="renderStockTable()" style="margin-bottom:12px;">
-        <div class="table-responsive">
-          <table class="app-table">
-            <thead>
-              <tr>
-                <th>ምርት ስም</th>
-                <th>መለኪያ</th>
-                <th>የመሸጫ ዋጋ</th>
-                <th>አሁን ያለ ክምችት</th>
-                <th>መጋዘኖች</th>
-              </tr>
-            </thead>
-            <tbody id="stock-table-body">
-              <!-- በ JS ይሞላል -->
-            </tbody>
-          </table>
+
+        <input type="text" id="stock-search-input" class="form-control" placeholder="በስም ወይም በምድብ ፈልግ..." oninput="renderStockTable()" style="margin-bottom:10px;">
+
+        <div id="stock-cards-container">
+          <!-- በ JS በካርድ መልክ ይሞላል (ሞባይል-ተስማሚ) -->
         </div>
       </div>
     </section>
 
-    <!-- D. ገጽ 4: ፋይናንስ (Finance: Expenses & Withdrawals) -->
-    <section id="page-finance" class="page">
-      <div class="btn-group">
-        <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-expense')" data-i18n="recordExpense">+ ወጪ መዝግብ</button>
+    <!-- -----------------------------------------------------------------------
+         ገጽ 7: ገንዘብ መውጣት (Withdrawals Page - Dedicated Module)
+         ----------------------------------------------------------------------- -->
+    <section id="page-withdrawals" class="page">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="font-size:1.05rem; font-weight:800; color:var(--text-main);" data-i18n="withdrawalsTitle">ገንዘብ መውጣት (Withdrawals)</h3>
         <button class="btn btn-warning btn-sm" onclick="openModal('modal-new-withdrawal')" data-i18n="recordWithdrawal">+ ገንዘብ መውጣት</button>
-        <button class="btn btn-secondary btn-sm" onclick="openModal('modal-settle-debt')" data-i18n="settleDebt">ዕዳ ማስታረቅ</button>
+      </div>
+
+      <div class="card" style="padding:10px; background:var(--warning-bg); border-color:#fde68a;">
+        <p style="font-size:0.8rem; color:#92400e; line-height:1.4;" data-i18n="withdrawalNote">
+          ማስታወሻ፡ ገንዘብ መውጣት የስራ ማስኬጃ ወጪ ተደርጎ አይቆጠርም፤ የፋይናንስ ሂሳቡን ሚዛን ብቻ ይቀንሳል።
+        </p>
+      </div>
+
+      <!-- የመውጣቶች ዝርዝር -->
+      <div class="card">
+        <div class="card-header-clean">
+          <div class="card-title"><span>💸</span> <span>የወጡ ገንዘቦች ታሪክ</span></div>
+          <span id="withdrawals-total-badge" class="badge-tag warning">0.00 ETB</span>
+        </div>
+        <input type="text" id="wth-search-input" class="form-control" placeholder="በተቀባይ ወይም ምክንያት ፈልግ..." oninput="loadWithdrawals()" style="margin-bottom:10px;">
+        <div id="withdrawals-list-container">
+          <!-- በ JS በካርድ መልክ ይሞላል -->
+        </div>
+      </div>
+    </section>
+
+    <!-- -----------------------------------------------------------------------
+         ገጽ 8: የስራ ማስኬጃ ወጪዎች (Operating Expenses Page)
+         ----------------------------------------------------------------------- -->
+    <section id="page-expenses" class="page">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="font-size:1.05rem; font-weight:800; color:var(--text-main);" data-i18n="expensesTitle">የስራ ማስኬጃ ወጪዎች</h3>
+        <button class="btn btn-danger btn-sm" onclick="openModal('modal-new-expense')" data-i18n="recordExpense">+ ወጪ መዝግብ</button>
       </div>
 
       <!-- የወጪዎች ዝርዝር -->
       <div class="card">
-        <div class="card-title">
-          <span data-i18n="expensesTitle">የስራ ማስኬጃ ወጪዎች</span>
-          <span id="expenses-total-badge" class="badge-tag external">0.00 ETB</span>
+        <div class="card-header-clean">
+          <div class="card-title"><span>🧾</span> <span>የወጪዎች ታሪክ</span></div>
+          <span id="expenses-total-badge" class="badge-tag credit">0.00 ETB</span>
         </div>
-        <div class="table-responsive">
-          <table class="app-table">
-            <thead>
-              <tr>
-                <th>ቀን</th>
-                <th>ምድብ</th>
-                <th>ማብራሪያ</th>
-                <th>አካውንት</th>
-                <th>መጠን</th>
-              </tr>
-            </thead>
-            <tbody id="expenses-table-body">
-              <!-- በ JS ይሞላል -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- የባለቤት መውጣቶች ዝርዝር -->
-      <div class="card">
-        <div class="card-title">
-          <span data-i18n="withdrawalsTitle">የባለቤት እና የተፈቀዱ መውጣቶች</span>
-          <span id="withdrawals-total-badge" class="badge-tag restaurant">0.00 ETB</span>
-        </div>
-        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px;" data-i18n="withdrawalNote">
-          ማስታወሻ፡ የባለቤት መውጣት የስራ ማስኬጃ ወጪ ተደርጎ አይቆጠርም፤ የካሽ/ባንክ ሚዛንን ብቻ ነው የሚቀንሰው።
-        </p>
-        <div class="table-responsive">
-          <table class="app-table">
-            <thead>
-              <tr>
-                <th>ቀን</th>
-                <th>ተቀባይ</th>
-                <th>ምክንያት</th>
-                <th>አካውንት</th>
-                <th>መጠን</th>
-              </tr>
-            </thead>
-            <tbody id="withdrawals-table-body">
-              <!-- በ JS ይሞላል -->
-            </tbody>
-          </table>
+        <input type="text" id="exp-search-input" class="form-control" placeholder="በማብራሪያ ወይም ምድብ ፈልግ..." oninput="loadExpenses()" style="margin-bottom:10px;">
+        <div id="expenses-list-container">
+          <!-- በ JS በካርድ መልክ ይሞላል -->
         </div>
       </div>
     </section>
 
-    <!-- E. ገጽ 5: ተጨማሪ ሜኑ (More Menu Modules) -->
+    <!-- -----------------------------------------------------------------------
+         ገጽ 9: አቅራቢዎች (Suppliers Directory Page)
+         ----------------------------------------------------------------------- -->
+    <section id="page-suppliers" class="page">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="font-size:1.05rem; font-weight:800; color:var(--text-main);">የአቅራቢዎች ማውጫ</h3>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-supplier')">+ አዲስ አቅራቢ</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header-clean">
+          <div class="card-title"><span>🏢</span> <span>ሁሉም አቅራቢዎች</span></div>
+          <span id="suppliers-count-badge" class="badge-tag neutral">0 አቅራቢዎች</span>
+        </div>
+        <div id="suppliers-cards-container">
+          <!-- በ JS ይሞላል -->
+        </div>
+      </div>
+    </section>
+
+    <!-- -----------------------------------------------------------------------
+         ገጽ 10: ተጨማሪ (More Menu: Reports, Closing, Users, Backup)
+         ----------------------------------------------------------------------- -->
     <section id="page-more" class="page">
       <div class="card">
-        <div class="card-title"><span>🌟 ተጨማሪ የድርጅቱ ሞጁሎች</span></div>
+        <div class="card-title" style="margin-bottom:12px;"><span>⚙️ ተጨማሪ የድርጅቱ ሞጁሎች</span></div>
         <div style="display:flex; flex-direction:column; gap:8px;">
-          <button class="btn btn-secondary" onclick="showSubModule('sub-transfers')">🚚 ከእርሻ ወደ ሬስቶራንት ዝውውር</button>
-          <button class="btn btn-secondary" onclick="showSubModule('sub-farm')">🥛 የእርሻ እና ወተት ምርት ማቀነባበሪያ</button>
-          <button class="btn btn-secondary" onclick="showSubModule('sub-purchases')">🛒 የውጭ ግዢዎች መዝገብ</button>
-          <button class="btn btn-secondary" onclick="showSubModule('sub-recipes')">🍲 የምግብ አዘገጃጀትና ግብዓት (Recipes)</button>
-          <button class="btn btn-secondary" onclick="showSubModule('sub-closing')">🔒 ዕለታዊ ሂሳብ መዝጊያ (Daily Closing)</button>
           <button class="btn btn-secondary" onclick="showSubModule('sub-reports')">📈 የፋይናንስና የትርፍ ሪፖርቶች (P&L)</button>
-          <button class="btn btn-secondary" onclick="showSubModule('sub-contacts')">👥 ደንበኞች እና አቅራቢዎች</button>
-          <button class="btn btn-secondary" id="btn-users-management" onclick="showSubModule('sub-users')">🛡️ የተጠቃሚዎች አስተዳደር (Super Admin)</button>
+          <button class="btn btn-secondary" onclick="showSubModule('sub-closing')">🔒 ዕለታዊ ሂሳብ መዝጊያ (Daily Closing)</button>
+          <button class="btn btn-secondary" onclick="showSubModule('sub-customers')">👥 የደንበኞች እና የብድር ዝርዝር</button>
+          <button class="btn btn-secondary" id="btn-users-management" onclick="showSubModule('sub-users')">🛡️ የተጠቃሚዎች ቁጥጥር (Super Admin)</button>
           <button class="btn btn-secondary" onclick="showSubModule('sub-backup')">💾 የመረጃ ምትኬ (Backup & Export)</button>
         </div>
       </div>
 
-      <!-- ንዑስ ሞጁል 1: ዝውውር (Sub-module: Transfers) -->
-      <div id="sub-transfers" class="sub-module" style="display:none;">
-        <div class="card">
-          <div class="card-title">
-            <span data-i18n="transfersTitle">ከእርሻ ወደ ሬስቶራንት ዝውውር</span>
-            <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-transfer')">+ አዲስ ዝውውር</button>
-          </div>
-          <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px;" data-i18n="transferAccountingNote">
-            ማስታወሻ፡ የውስጥ ዝውውር ለተጠቃለለው ድርጅት ውጫዊ ገቢ ወይም ወጪ ሆኖ አይቆጠርም!
-          </p>
-          <div class="table-responsive">
-            <table class="app-table">
-              <thead>
-                <tr>
-                  <th>ቀን</th>
-                  <th>ምርት</th>
-                  <th>መጠን</th>
-                  <th>ከመጋዘን</th>
-                  <th>ወደ መጋዘን</th>
-                  <th>ሁኔታ</th>
-                  <th>እርምጃ</th>
-                </tr>
-              </thead>
-              <tbody id="transfers-table-body">
-                <!-- በ JS ይሞላል -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ንዑስ ሞጁል 2: እርሻና ወተት (Sub-module: Farm Productions) -->
-      <div id="sub-farm" class="sub-module" style="display:none;">
-        <div class="card">
-          <div class="card-title">
-            <span data-i18n="farmTitle">የእርሻ እና ወተት ምርት ማቀነባበሪያ</span>
-            <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-farm')">+ አዲስ ምርት</button>
-          </div>
-          <div class="table-responsive">
-            <table class="app-table">
-              <thead>
-                <tr>
-                  <th>ቀን</th>
-                  <th>ምርት</th>
-                  <th>መጠን</th>
-                  <th>የምርት ወጪ</th>
-                  <th>ባች</th>
-                </tr>
-              </thead>
-              <tbody id="farm-table-body">
-                <!-- በ JS ይሞላል -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ንዑስ ሞጁል 3: ግዢዎች (Sub-module: Purchases) -->
-      <div id="sub-purchases" class="sub-module" style="display:none;">
-        <div class="card">
-          <div class="card-title">
-            <span data-i18n="purchasesTitle">የውጭ ግዢዎች መዝገብ</span>
-            <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-purchase')">+ አዲስ ግዢ</button>
-          </div>
-          <div class="table-responsive">
-            <table class="app-table">
-              <thead>
-                <tr>
-                  <th>ቀን</th>
-                  <th>አቅራቢ</th>
-                  <th>ጠቅላላ ዋጋ</th>
-                  <th>ሁኔታ</th>
-                  <th>ዝርዝር</th>
-                </tr>
-              </thead>
-              <tbody id="purchases-table-body">
-                <!-- በ JS ይሞላል -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ንዑስ ሞጁል 4: የምግብ አዘገጃጀት (Sub-module: Recipes) -->
-      <div id="sub-recipes" class="sub-module" style="display:none;">
-        <div class="card">
-          <div class="card-title">
-            <span data-i18n="recipesTitle">የምግብ አዘገጃጀት እና ግብዓቶች (Recipes)</span>
-            <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-recipe')">+ ግብዓት አገናኝ</button>
-          </div>
-          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">
-            ለምሳሌ፡ 1 ሰሃን የበሬ ጥብስ 0.25 kg ስጋ፣ 0.10 kg ሽንኩርት እና 0.05 L ዘይት ይፈልጋል። ሽያጭ ሲካሄድ እነዚህ በራስ-ሰር ይቀነሳሉ!
-          </p>
-          <div class="table-responsive">
-            <table class="app-table">
-              <thead>
-                <tr>
-                  <th>የሬስቶራንት ምግብ</th>
-                  <th>ጥሬ ግብዓት</th>
-                  <th>አስፈላጊ መጠን</th>
-                </tr>
-              </thead>
-              <tbody id="recipes-table-body">
-                <!-- በ JS ይሞላል -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ንዑስ ሞጁል 5: ዕለታዊ ሂሳብ መዝጊያ (Sub-module: Daily Closing) -->
-      <div id="sub-closing" class="sub-module" style="display:none;">
-        <div class="card">
-          <div class="card-title">
-            <span data-i18n="dailyClosingTitle">ዕለታዊ ሂሳብ መዝጊያ</span>
-            <span id="closing-status-badge" class="badge-tag farm">ክፍት</span>
-          </div>
-          <div class="form-group">
-            <label class="form-label" data-i18n="actualCash">በእጅ ያለ ትክክለኛ ጥሬ ገንዘብ (Actual Cash)</label>
-            <input type="number" id="closing-actual-cash" class="form-control" placeholder="0.00" oninput="calculateClosingDiff()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">በሲስተሙ ያለ ጥሬ ገንዘብ</label>
-            <input type="text" id="closing-system-cash" class="form-control" readonly disabled>
-          </div>
-          <div class="form-group">
-            <label class="form-label" data-i18n="cashDifference">የገንዘብ ልዩነት</label>
-            <input type="text" id="closing-diff" class="form-control" readonly style="font-weight:700;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" data-i18n="actualCbe">በባንክ ያለ ትክክለኛ CBE</label>
-            <input type="number" id="closing-actual-cbe" class="form-control" placeholder="0.00">
-          </div>
-          <div class="form-group">
-            <label class="form-label" data-i18n="actualTelebirr">በቴሌብር ያለ ትክክለኛ ሂሳብ</label>
-            <input type="number" id="closing-actual-telebirr" class="form-control" placeholder="0.00">
-          </div>
-          <div class="form-group">
-            <label class="form-label" data-i18n="discrepancyReason">የልዩነት ምክንያት (ልዩነት ካለ ግዴታ ነው)</label>
-            <textarea id="closing-discrepancy-reason" class="form-control" rows="2"></textarea>
-          </div>
-          <div style="margin-top:12px;">
-            <button class="btn btn-primary" onclick="submitDailyClosing()" data-i18n="closeDay">የዕለቱን ሂሳብ ዝጋ</button>
-          </div>
-          <div id="reopen-closing-section" style="display:none; margin-top:16px; border-top:1px dashed var(--border-color); padding-top:12px;">
-            <label class="form-label" data-i18n="reopenReason">ዳግም የመክፈቻ ምክንያት</label>
-            <input type="text" id="closing-reopen-reason" class="form-control" placeholder="ለምን ዳግም መከፈት አስፈለገ?">
-            <button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="reopenDailyClosing()" data-i18n="reopenDay">የተዘጋውን ሂሳብ ዳግም ክፈት (Super Admin)</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ንዑስ ሞጁል 6: ሪፖርቶች (Sub-module: Reports & P&L) -->
+      <!-- ንዑስ ሞጁል 1: ሪፖርቶች -->
       <div id="sub-reports" class="sub-module" style="display:none;">
         <div class="card">
-          <div class="card-title">
-            <span data-i18n="reportsTitle">የፋይናንስና የትርፍ ሪፖርቶች</span>
+          <div class="card-header-clean">
+            <div class="card-title"><span>📈</span> <span>የፋይናንስና የትርፍ ሪፖርቶች</span></div>
+            <button class="btn btn-secondary btn-sm" onclick="hideSubModules()">✕ ዝጋ</button>
           </div>
           <div class="btn-group">
-            <button class="btn btn-secondary btn-sm active" onclick="loadReport('pl', this)" data-i18n="plStatement">የትርፍና ኪሳራ (P&L)</button>
-            <button class="btn btn-secondary btn-sm" onclick="loadReport('product_profitability', this)" data-i18n="productProfitability">የምርቶች አትራፊነት</button>
-            <button class="btn btn-secondary btn-sm" onclick="loadReport('cashflow', this)" data-i18n="cashFlow">የገንዘብ ፍሰት</button>
+            <button class="btn btn-secondary btn-sm active" onclick="loadReport('pl', this)">የትርፍና ኪሳራ (P&L)</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadReport('product_profitability', this)">የምርቶች አትራፊነት</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadReport('cashflow', this)">የገንዘብ ፍሰት</button>
           </div>
           <div id="reports-content-container">
             <!-- በ JS ይሞላል -->
@@ -496,71 +637,89 @@
         </div>
       </div>
 
-      <!-- ንዑስ ሞጁል 7: ደንበኞችና አቅራቢዎች (Sub-module: Contacts) -->
-      <div id="sub-contacts" class="sub-module" style="display:none;">
+      <!-- ንዑስ ሞጁል 2: ዕለታዊ ሂሳብ መዝጊያ -->
+      <div id="sub-closing" class="sub-module" style="display:none;">
         <div class="card">
-          <div class="card-title">
-            <span data-i18n="contactsTitle">ደንበኞች እና አቅራቢዎች</span>
-            <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-contact')">+ አዲስ እውቂያ</button>
+          <div class="card-header-clean">
+            <div class="card-title"><span>🔒</span> <span>ዕለታዊ ሂሳብ መዝጊያ</span></div>
+            <button class="btn btn-secondary btn-sm" onclick="hideSubModules()">✕ ዝጋ</button>
           </div>
-          <div class="table-responsive">
-            <table class="app-table">
-              <thead>
-                <tr>
-                  <th>ስም</th>
-                  <th>ዓይነት</th>
-                  <th>ስልክ</th>
-                  <th>ያለበት ዕዳ</th>
-                </tr>
-              </thead>
-              <tbody id="contacts-table-body">
-                <!-- በ JS ይሞላል -->
-              </tbody>
-            </table>
+          <div class="form-group">
+            <label class="form-label">በእጅ ያለ ትክክለኛ ጥሬ ገንዘብ (Actual Cash)</label>
+            <input type="number" id="closing-actual-cash" class="form-control" placeholder="0.00" oninput="calculateClosingDiff()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">በሲስተሙ ያለ ጥሬ ገንዘብ</label>
+            <input type="text" id="closing-system-cash" class="form-control" readonly disabled>
+          </div>
+          <div class="form-group">
+            <label class="form-label">የገንዘብ ልዩነት</label>
+            <input type="text" id="closing-diff" class="form-control" readonly style="font-weight:700;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">በባንክ ያለ ትክክለኛ CBE</label>
+            <input type="number" id="closing-actual-cbe" class="form-control" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">በቴሌብር ያለ ትክክለኛ ሂሳብ</label>
+            <input type="number" id="closing-actual-telebirr" class="form-control" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">የልዩነት ምክንያት</label>
+            <textarea id="closing-discrepancy-reason" class="form-control" rows="2"></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="submitDailyClosing()">የዕለቱን ሂሳብ ዝጋ</button>
+        </div>
+      </div>
+
+      <!-- ንዑስ ሞጁል 3: ደንበኞች -->
+      <div id="sub-customers" class="sub-module" style="display:none;">
+        <div class="card">
+          <div class="card-header-clean">
+            <div class="card-title"><span>👥</span> <span>ደንበኞች እና የብድር ዝርዝር</span></div>
+            <button class="btn btn-secondary btn-sm" onclick="hideSubModules()">✕ ዝጋ</button>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-bottom:10px;" onclick="openModal('modal-new-customer')">+ አዲስ ደንበኛ</button>
+          <div id="customers-cards-container">
+            <!-- በ JS ይሞላል -->
           </div>
         </div>
       </div>
 
-      <!-- ንዑስ ሞጁል 8: የተጠቃሚዎች አስተዳደር (Sub-module: Users - Super Admin Only) -->
+      <!-- ንዑስ ሞጁል 4: ተጠቃሚዎች -->
       <div id="sub-users" class="sub-module" style="display:none;">
         <div class="card">
-          <div class="card-title">
-            <span data-i18n="usersTitle">የተጠቃሚዎች ቁጥጥር</span>
-            <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-user')">+ አዲስ ተጠቃሚ</button>
+          <div class="card-header-clean">
+            <div class="card-title"><span>🛡️</span> <span>የተጠቃሚዎች ቁጥጥር (Super Admin)</span></div>
+            <button class="btn btn-secondary btn-sm" onclick="hideSubModules()">✕ ዝጋ</button>
           </div>
-          <div class="table-responsive">
-            <table class="app-table">
-              <thead>
-                <tr>
-                  <th>ስም</th>
-                  <th>የተጠቃሚ ስም</th>
-                  <th>ሚና</th>
-                  <th>ሁኔታ</th>
-                </tr>
-              </thead>
-              <tbody id="users-table-body">
-                <!-- በ JS ይሞላል -->
-              </tbody>
-            </table>
+          <button class="btn btn-primary btn-sm" style="margin-bottom:10px;" onclick="openModal('modal-new-user')">+ አዲስ ተጠቃሚ</button>
+          <div id="users-list-container">
+            <!-- በ JS ይሞላል -->
           </div>
         </div>
       </div>
 
-      <!-- ንዑስ ሞጁል 9: ባክአፕ (Sub-module: Backup) -->
+      <!-- ንዑስ ሞጁል 5: ባክአፕ -->
       <div id="sub-backup" class="sub-module" style="display:none;">
         <div class="card">
-          <div class="card-title"><span data-i18n="backupTitle">የመረጃ ምትኬ (Backup & Export)</span></div>
-          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">
-            ሁሉንም የድርጅቱን የግብይት፣ የክምችት፣ የፋይናንስ እና የምርት ዳታዎች በ JSON ፎርማት ወደ ስልክዎ ወይም ኮምፒውተርዎ ያውርዱ።
+          <div class="card-header-clean">
+            <div class="card-title"><span>💾</span> <span>የመረጃ ምትኬ (Backup & Export)</span></div>
+            <button class="btn btn-secondary btn-sm" onclick="hideSubModules()">✕ ዝጋ</button>
+          </div>
+          <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:14px;">
+            ሁሉንም የኩባንያውን የሽያጭ፣ የእቃ ርክክብ፣ የክምችት፣ የሬሲፒ፣ የፋይናንስ እና የወጪ መረጃዎች በ JSON ፋይል ወደ መሳሪያዎ ያውርዱ።
           </p>
-          <a id="btn-export-backup" href="./api/backup.php?action=export_json" class="btn btn-primary" data-i18n="exportBackup">💾 ዳታ ወደ ውጭ ላክ (Download Backup)</a>
+          <a id="btn-export-backup" href="./api/backup.php?action=export_json" class="btn btn-primary">💾 መረጃዎችን አውርድ (Download Backup)</a>
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- 3. ቋሚ የታችኛው አሰሳ (Bottom Navigation Bar) -->
+  <!-- =========================================================================
+       4. የታችኛው አሰሳ አሞሌ (Bottom Navigation Bar - Mobile First)
+       ========================================================================= -->
   <nav class="bottom-nav">
     <button class="nav-item active" onclick="switchPage('page-dashboard', this)">
       <span class="nav-icon">📊</span>
@@ -568,15 +727,19 @@
     </button>
     <button class="nav-item" onclick="switchPage('page-pos', this)">
       <span class="nav-icon">🛒</span>
-      <span data-i18n="navSales">ሽያጭ (POS)</span>
+      <span data-i18n="navSales">ሽያጭ</span>
+    </button>
+    <button class="nav-item" onclick="switchPage('page-receiving', this)">
+      <span class="nav-icon">📥</span>
+      <span data-i18n="navReceiving">ርክክብ</span>
+    </button>
+    <button class="nav-item" onclick="switchPage('page-recipes', this)">
+      <span class="nav-icon">🍲</span>
+      <span data-i18n="navFoodRecipe">ሬሲፒ</span>
     </button>
     <button class="nav-item" onclick="switchPage('page-stock', this)">
       <span class="nav-icon">📦</span>
       <span data-i18n="navStock">ክምችት</span>
-    </button>
-    <button class="nav-item" onclick="switchPage('page-finance', this)">
-      <span class="nav-icon">💵</span>
-      <span data-i18n="navFinance">ፋይናንስ</span>
     </button>
     <button class="nav-item" onclick="switchPage('page-more', this)">
       <span class="nav-icon">⚙️</span>
@@ -584,25 +747,26 @@
     </button>
   </nav>
 
-  <!-- 4. የመግቢያ ስክሪን (Login Screen Modal) -->
+  <!-- =========================================================================
+       5. የመግቢያ ስክሪን (Login Screen Modal)
+       ========================================================================= -->
   <div id="login-screen" class="login-screen">
     <div class="login-box">
       <div class="login-header">
         <img src="./icons/icon.svg" alt="Logo" class="login-logo">
-        <h2 class="login-title" data-i18n="appName">ተክሉ ጌታቸው ቢዝነስ</h2>
-        <p class="login-subtitle" data-i18n="loginTitle">ወደ ሲስተሙ ይግቡ</p>
+        <h2 class="login-title" data-i18n="appName">ተክሉ ምግብ ቤት</h2>
+        <p class="login-subtitle">የኩባንያ አስተዳደር ስርዓት</p>
       </div>
 
-      <!-- የስህተት መልዕክት ማሳያ ሳጥን -->
       <div id="login-error-alert" style="display:none; background:#fee2e2; border:1px solid #ef4444; color:#991b1b; padding:10px; border-radius:var(--radius-sm); margin-bottom:14px; font-size:0.85rem; font-weight:600;"></div>
 
       <form id="login-form" onsubmit="handleLogin(event)">
         <div class="form-group">
-          <label class="form-label" data-i18n="username">የተጠቃሚ ስም</label>
+          <label class="form-label">የተጠቃሚ ስም</label>
           <input type="text" id="login-username" class="form-control" value="admin" required autocomplete="username">
         </div>
         <div class="form-group">
-          <label class="form-label" data-i18n="password">የይለፍ ቃል</label>
+          <label class="form-label">የይለፍ ቃል</label>
           <div style="position:relative;">
             <input type="password" id="login-password" class="form-control" value="Admin@123" required autocomplete="current-password" style="padding-right:40px;">
             <button type="button" onclick="togglePasswordVisibility()" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem; color:var(--text-muted);" title="ይለፍ ቃል አሳይ/ደብቅ">👁️</button>
@@ -613,7 +777,6 @@
         </div>
       </form>
 
-      <!-- ፈጣን የመግቢያ አማራጮች (Quick Role Selection) -->
       <div style="margin-top:16px; border-top:1px dashed var(--border-color); padding-top:12px; text-align:center;">
         <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px; font-weight:600;">ፈጣን መግቢያ (Quick Select):</div>
         <div style="display:flex; gap:8px;">
@@ -624,98 +787,220 @@
     </div>
   </div>
 
-  <!-- 5. የተለያዩ ሞዳሎች (Action Modals) -->
+  <!-- =========================================================================
+       6. ተግባራዊ ሞዳሎች (Action Modals)
+       ========================================================================= -->
 
-  <!-- Modal: አዲስ ምርት መመዝገብ -->
+  <!-- Modal 1: እቃ መረከቢያ (Receive Goods Modal) -->
+  <div id="modal-receive-goods" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title" data-i18n="receivingTitle">እቃ መረከቢያ (Goods Receiving)</div>
+        <button class="modal-close" onclick="closeModal('modal-receive-goods')">&times;</button>
+      </div>
+      <form onsubmit="handleReceiveGoods(event)">
+        <!-- አቅራቢ መምረጫ -->
+        <div class="form-group">
+          <label class="form-label" data-i18n="selectSupplier">አቅራቢ ይምረጡ</label>
+          <select id="rec-supplier-select" class="form-control" onchange="toggleNewSupplierInputs()">
+            <option value="">-- ነባር አቅራቢ ይምረጡ --</option>
+            <option value="NEW">+ አዲስ አቅራቢ መመዝገብ</option>
+          </select>
+        </div>
+
+        <!-- አዲስ አቅራቢ ማስገቢያ (አዲስ ከተመረጠ) -->
+        <div id="new-supplier-box" style="display:none; background:var(--bg-subtle); padding:10px; border-radius:var(--radius-sm); margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label" data-i18n="supplierName">የአቅራቢ ስም</label>
+            <input type="text" id="rec-new-sup-name" class="form-control" placeholder="ምሳሌ፡ ABC Biscuit Company">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="supplierPhone">ስልክ ቁጥር</label>
+            <input type="text" id="rec-new-sup-phone" class="form-control" placeholder="09...">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="supplierAddress">አድራሻ</label>
+            <input type="text" id="rec-new-sup-address" class="form-control">
+          </div>
+        </div>
+
+        <!-- የተረከቧቸው እቃዎች ዝርዝር -->
+        <div class="form-group">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label class="form-label" style="margin-bottom:0;" data-i18n="receivedProducts">የተረከቧቸው እቃዎች</label>
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addReceivingItemRow()" data-i18n="addProductRow">+ እቃ ጨምር</button>
+          </div>
+          <div id="rec-items-container">
+            <!-- በ JS የሚጨመሩ የእቃዎች መስመሮች -->
+          </div>
+        </div>
+
+        <!-- የገንዘብ ድምር እና ስሌቶች -->
+        <div style="background:var(--bg-subtle); padding:10px; border-radius:var(--radius-sm); margin-bottom:12px;">
+          <div class="receipt-row" style="font-size:0.95rem; font-weight:700;">
+            <span data-i18n="totalPurchaseAmount">ጠቅላላ የግዢ ዋጋ፡</span>
+            <span id="rec-grand-total-display">0.00 ETB</span>
+          </div>
+          <div class="form-group" style="margin-top:8px;">
+            <label class="form-label" data-i18n="paidAmountImmediately">ወዲያውኑ የተከፈለ ገንዘብ</label>
+            <input type="number" id="rec-paid-amount" class="form-control" step="0.01" value="0" min="0" oninput="calculateReceivingDebt()">
+          </div>
+          <div class="receipt-row" style="font-size:1rem; font-weight:800; color:var(--danger); margin-top:6px;">
+            <span data-i18n="unpaidBalanceDebt">ያልተከፈለ ዕዳ (የቀረ)፡</span>
+            <span id="rec-unpaid-debt-display">0.00 ETB</span>
+          </div>
+        </div>
+
+        <!-- የተከፈለበት አካውንት -->
+        <div class="form-group">
+          <label class="form-label" data-i18n="paymentAccount">የተከፈለበት አካውንት</label>
+          <select id="rec-payment-account" class="form-control"></select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">ማስታወሻ / ደረሰኝ ቁጥር</label>
+          <input type="text" id="rec-notes" class="form-control">
+        </div>
+
+        <button type="submit" class="btn btn-primary" data-i18n="saveReceiving">እቃውን ተረከብ</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: የምግብ ዝርዝር እና ማዘጋጃ (Food Dish Creation Modal) -->
+  <div id="modal-create-food-recipe" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title" data-i18n="createNewRecipe">አዲስ ምግብ መዝግብ</div>
+        <button class="modal-close" onclick="closeModal('modal-create-food-recipe')">&times;</button>
+      </div>
+      <form onsubmit="handleSaveFoodRecipe(event)">
+        <input type="hidden" id="recipe-food-id" value="">
+
+        <div class="form-group">
+          <label class="form-label" data-i18n="foodNameAm">የምግብ ስም</label>
+          <input type="text" id="rcp-food-name-am" class="form-control" placeholder="ምሳሌ፡ ፍርፍር፣ ሽሮ፣ ዶሮ ወጥ" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="sellingPrice">የመሸጫ ዋጋ (ETB)</label>
+          <input type="number" id="rcp-selling-price" class="form-control" step="0.01" placeholder="0.00" required oninput="calculateRecipeProfit()">
+        </div>
+
+        <!-- ግብዓቶች (Dynamic Ingredients Selector) -->
+        <div class="form-group">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label class="form-label" style="margin-bottom:0;" data-i18n="recipeIngredients">የሚያስፈልጉ ጥሬ እቃዎች (ከተመዘገበው ክምችት)</label>
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRecipeIngredientRow()" data-i18n="addIngredientRow">+ ጥሬ እቃ ጨምር</button>
+          </div>
+          <div id="recipe-ingredients-container">
+            <!-- በ JS የሚጨመሩ የግብዓት መስመሮች -->
+          </div>
+        </div>
+
+        <!-- የወጪና የትርፍ ስሌት ማሳያ ሳጥን -->
+        <div style="background:var(--bg-subtle); padding:10px; border-radius:var(--radius-sm); margin-bottom:12px;">
+          <div class="receipt-row">
+            <span data-i18n="costPerServing">የአንድ ሰሃን ማዘጋጃ ወጪ፡</span>
+            <span id="rcp-cost-per-serving" style="font-weight:700;">0.00 ETB</span>
+          </div>
+          <div class="receipt-row" style="color:var(--primary); font-weight:800; font-size:1rem; margin-top:4px;">
+            <span data-i18n="estimatedProfit">የሚጠበቅ ትርፍ (በሰሃን)፡</span>
+            <span id="rcp-estimated-profit">0.00 ETB</span>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" data-i18n="saveRecipeBtn">ምግቡን መዝግብ</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: ለአቅራቢ ክፍያ መፈጸም (Supplier Make Payment Modal) -->
+  <div id="modal-supplier-payment" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title" data-i18n="recordSupplierPayment">ለአቅራቢ ክፍያ መመዝገብ</div>
+        <button class="modal-close" onclick="closeModal('modal-supplier-payment')">&times;</button>
+      </div>
+      <form onsubmit="handleSupplierPayment(event)">
+        <input type="hidden" id="sp-supplier-id" value="">
+        <div class="form-group">
+          <label class="form-label">አቅራቢ</label>
+          <input type="text" id="sp-supplier-name" class="form-control" readonly disabled>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ያለበት ያልተከፈለ ዕዳ</label>
+          <input type="text" id="sp-current-debt" class="form-control" readonly disabled style="font-weight:700; color:var(--danger);">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="amountToPay">የሚከፈለው የገንዘብ መጠን (ETB)</label>
+          <input type="number" id="sp-amount" class="form-control" step="0.01" required min="0.01" oninput="calculateRemainingSupplierDebt()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">የሚቀረው አዲስ ዕዳ</label>
+          <input type="text" id="sp-new-debt" class="form-control" readonly disabled style="font-weight:700; color:var(--primary);">
+        </div>
+        <div class="form-group">
+          <label class="form-label">የተከፈለበት የፋይናንስ አካውንት</label>
+          <select id="sp-account-id" class="form-control" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ማስታወሻ</label>
+          <input type="text" id="sp-notes" class="form-control" placeholder="ምሳሌ፡ የባንክ ማመሳከሪያ ቁጥር">
+        </div>
+        <button type="submit" class="btn btn-primary">ክፍያውን አረጋግጥ</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: አዲስ ምርት ወይም ጥሬ ዕቃ መመዝገብ -->
   <div id="modal-new-product" class="modal-overlay">
     <div class="modal-sheet">
       <div class="modal-header">
-        <div class="modal-title" data-i18n="registerProduct">አዲስ ምርት መመዝገብ</div>
+        <div class="modal-title" data-i18n="registerProduct">አዲስ ምርት / ጥሬ ዕቃ መመዝገብ</div>
         <button class="modal-close" onclick="closeModal('modal-new-product')">&times;</button>
       </div>
       <form onsubmit="handleCreateProduct(event)">
         <div class="form-group">
-          <label class="form-label" data-i18n="productNameAm">የምርት ስም (አማርኛ)</label>
-          <input type="text" id="np-name-am" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="productNameEn">የምርት ስም (እንግሊዝኛ)</label>
-          <input type="text" id="np-name-en" class="form-control" required>
+          <label class="form-label" data-i18n="productNameAm">የምርት / የጥሬ ዕቃ ስም</label>
+          <input type="text" id="np-name-am" class="form-control" placeholder="ምሳሌ፡ ሽንኩርት፣ ዘይት፣ በርበሬ፣ ስጋ" required>
         </div>
         <div class="form-group">
           <label class="form-label" data-i18n="category">ምድብ</label>
           <select id="np-category" class="form-control" required></select>
         </div>
         <div class="form-group">
-          <label class="form-label" data-i18n="unit">መለኪያ</label>
+          <label class="form-label" data-i18n="unit">መለኪያ (Unit)</label>
           <select id="np-unit" class="form-control">
-            <option value="liter">ሊትር (Liter)</option>
             <option value="kg">ኪሎግራም (Kg)</option>
+            <option value="gram">ግራም (Gram)</option>
+            <option value="liter">ሊትር (Liter)</option>
+            <option value="ml">ሚሊሊትር (ml)</option>
             <option value="piece">ፍሬ/ቁጥር (Piece)</option>
-            <option value="plate">ሰሃን (Plate)</option>
+            <option value="packet">ፓኬት (Packet)</option>
+            <option value="box">ሳጥን/ካርቶን (Box)</option>
             <option value="bottle">ጠርሙስ (Bottle)</option>
+            <option value="plate">ሰሃን (Plate)</option>
             <option value="cup">ስኒ/ኩባያ (Cup)</option>
-            <option value="box">ካርቶን/ሳጥን (Box)</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label" data-i18n="sellingPrice">የመሸጫ ዋጋ (ETB)</label>
-          <input type="number" id="np-selling-price" class="form-control" step="0.01" required>
+          <label class="form-label" data-i18n="purchaseCost">የአንዱ ግዢ ዋጋ (ETB)</label>
+          <input type="number" id="np-purchase-cost" class="form-control" step="0.01" value="0" placeholder="0.00">
         </div>
         <div class="form-group">
-          <label class="form-label" data-i18n="purchaseCost">የግዢ/ማምረቻ ወጪ (ETB)</label>
-          <input type="number" id="np-purchase-cost" class="form-control" step="0.01" value="0">
+          <label class="form-label">የመክፈቻ ክምችት (Initial Stock)</label>
+          <input type="number" id="np-opening-stock" class="form-control" step="0.01" value="0">
         </div>
         <div class="form-group">
           <label class="form-label" data-i18n="minStock">ዝቅተኛ ክምችት ማስጠንቀቂያ መጠን</label>
-          <input type="number" id="np-min-stock" class="form-control" value="0">
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="source">ምንጭ</label>
-          <select id="np-source" class="form-control">
-            <option value="farm">የእርሻ ምርት (Farm)</option>
-            <option value="restaurant">የሬስቶራንት ምግብ (Restaurant)</option>
-            <option value="external">የውጭ ግዢ (External)</option>
-          </select>
-        </div>
-        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:12px;">
-          ማስታወሻ፡ ምርት መመዝገብ ብቻውን ክምችት አይጨምርም! ክምችት የሚጨምረው በመክፈቻ ክምችት፣ በግዢ ወይም በምርት መዝገብ ብቻ ነው።
-        </p>
-        <button type="submit" class="btn btn-primary" data-i18n="save">መዝግብ</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal: የመክፈቻ ክምችት ማስገቢያ -->
-  <div id="modal-opening-stock" class="modal-overlay">
-    <div class="modal-sheet">
-      <div class="modal-header">
-        <div class="modal-title" data-i18n="openingStock">የመክፈቻ ክምችት ማስገቢያ</div>
-        <button class="modal-close" onclick="closeModal('modal-opening-stock')">&times;</button>
-      </div>
-      <form onsubmit="handleOpeningStock(event)">
-        <div class="form-group">
-          <label class="form-label">ምርት ይምረጡ</label>
-          <select id="os-product" class="form-control" required></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="stockLocation">መጋዘን</label>
-          <select id="os-location" class="form-control" required></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">መጠን</label>
-          <input type="number" id="os-qty" class="form-control" step="0.01" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">የአንዱ ዋጋ/ወጪ (ETB)</label>
-          <input type="number" id="os-cost" class="form-control" step="0.01" value="0">
+          <input type="number" id="np-min-stock" class="form-control" step="0.01" value="0">
         </div>
         <button type="submit" class="btn btn-primary" data-i18n="save">መዝግብ</button>
       </form>
     </div>
   </div>
 
-  <!-- Modal: የክምችት ማስተካከያ -->
+  <!-- Modal 5: የክምችት ማስተካከያ (Stock Adjustment Modal) -->
   <div id="modal-adjust-stock" class="modal-overlay">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -726,10 +1011,6 @@
         <div class="form-group">
           <label class="form-label">ምርት</label>
           <select id="adj-product" class="form-control" required></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="stockLocation">መጋዘን</label>
-          <select id="adj-location" class="form-control" required></select>
         </div>
         <div class="form-group">
           <label class="form-label">የማስተካከያ ዓይነት</label>
@@ -752,11 +1033,44 @@
     </div>
   </div>
 
-  <!-- Modal: አዲስ ወጪ -->
+  <!-- Modal 6: አዲስ ገንዘብ መውጣት መመዝገብ (Withdrawal Modal) -->
+  <div id="modal-new-withdrawal" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title" data-i18n="recordWithdrawal">ገንዘብ መውጣት መመዝገብ</div>
+        <button class="modal-close" onclick="closeModal('modal-new-withdrawal')">&times;</button>
+      </div>
+      <form onsubmit="handleCreateWithdrawal(event)">
+        <div class="form-group">
+          <label class="form-label">ገንዘቡ የወጣበት ሂሳብ (ጥሬ ገንዘብ፣ ቴሌብር፣ ንግድ ባንክ)</label>
+          <select id="wth-account" class="form-control" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">የገንዘብ መጠን (ETB)</label>
+          <input type="number" id="wth-amount" class="form-control" step="0.01" required min="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="recipientName">ተቀባይ ሰው</label>
+          <input type="text" id="wth-recipient" class="form-control" placeholder="ምሳሌ፡ አቶ ተክሉ" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="withdrawalReason">ምክንያት</label>
+          <input type="text" id="wth-reason" class="form-control" placeholder="ምሳሌ፡ የባለቤት ድርሻ" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ተጨማሪ ማስታወሻ</label>
+          <input type="text" id="wth-notes" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-warning" data-i18n="save">መውጣቱን መዝግብ</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 7: አዲስ ወጪ መመዝገብ (Expense Modal) -->
   <div id="modal-new-expense" class="modal-overlay">
     <div class="modal-sheet">
       <div class="modal-header">
-        <div class="modal-title" data-i18n="recordExpense">አዲስ ወጪ መመዝገብ</div>
+        <div class="modal-title" data-i18n="recordExpense">አዲስ የስራ ማስኬጃ ወጪ</div>
         <button class="modal-close" onclick="closeModal('modal-new-expense')">&times;</button>
       </div>
       <form onsubmit="handleCreateExpense(event)">
@@ -770,252 +1084,195 @@
         </div>
         <div class="form-group">
           <label class="form-label">የገንዘብ መጠን (ETB)</label>
-          <input type="number" id="exp-amount" class="form-control" step="0.01" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="department">መምሪያ</label>
-          <select id="exp-dept" class="form-control">
-            <option value="general">አጠቃላይ ድርጅት (General)</option>
-            <option value="farm">የእርሻ መምሪያ (Farm)</option>
-            <option value="restaurant">የሬስቶራንት መምሪያ (Restaurant)</option>
-          </select>
+          <input type="number" id="exp-amount" class="form-control" step="0.01" required min="0.01">
         </div>
         <div class="form-group">
           <label class="form-label" data-i18n="description">ማብራሪያ</label>
-          <input type="text" id="exp-desc" class="form-control" required>
+          <input type="text" id="exp-desc" class="form-control" placeholder="ምሳሌ፡ የኤሌክትሪክ ክፍያ" required>
         </div>
-        <button type="submit" class="btn btn-primary" data-i18n="save">ወጪውን መዝግብ</button>
+        <button type="submit" class="btn btn-danger" data-i18n="save">ወጪውን መዝግብ</button>
       </form>
     </div>
   </div>
 
-  <!-- Modal: የባለቤት መውጣት -->
-  <div id="modal-new-withdrawal" class="modal-overlay">
+  <!-- Modal 8: አዲስ አቅራቢ መመዝገብ (Supplier Modal) -->
+  <div id="modal-new-supplier" class="modal-overlay">
     <div class="modal-sheet">
       <div class="modal-header">
-        <div class="modal-title" data-i18n="recordWithdrawal">ገንዘብ መውጣት መመዝገብ</div>
-        <button class="modal-close" onclick="closeModal('modal-new-withdrawal')">&times;</button>
+        <div class="modal-title">አዲስ አቅራቢ መመዝገብ</div>
+        <button class="modal-close" onclick="closeModal('modal-new-supplier')">&times;</button>
       </div>
-      <form onsubmit="handleCreateWithdrawal(event)">
+      <form onsubmit="handleCreateSupplier(event)">
         <div class="form-group">
-          <label class="form-label">የወጣበት የፋይናንስ አካውንት</label>
-          <select id="wth-account" class="form-control" required></select>
+          <label class="form-label" data-i18n="supplierName">የአቅራቢ/ኩባንያ ስም</label>
+          <input type="text" id="sup-name" class="form-control" required>
         </div>
         <div class="form-group">
-          <label class="form-label">የገንዘብ መጠን (ETB)</label>
-          <input type="number" id="wth-amount" class="form-control" step="0.01" required>
+          <label class="form-label" data-i18n="supplierPhone">ስልክ ቁጥር</label>
+          <input type="text" id="sup-phone" class="form-control">
         </div>
         <div class="form-group">
-          <label class="form-label" data-i18n="recipientName">ተቀባይ ሰው</label>
-          <input type="text" id="wth-recipient" class="form-control" placeholder="ምሳሌ፡ አቶ ተክሉ ጌታቸው" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="withdrawalReason">ምክንያት</label>
-          <input type="text" id="wth-reason" class="form-control" placeholder="ምሳሌ፡ የባለቤት የግል ክፍፍል" required>
-        </div>
-        <button type="submit" class="btn btn-warning" data-i18n="save">መውጣቱን መዝግብ</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal: አዲስ ዝውውር (Farm-to-Restaurant) -->
-  <div id="modal-new-transfer" class="modal-overlay">
-    <div class="modal-sheet">
-      <div class="modal-header">
-        <div class="modal-title" data-i18n="sendTransfer">ምርት ወደ ሬስቶራንት ላክ</div>
-        <button class="modal-close" onclick="closeModal('modal-new-transfer')">&times;</button>
-      </div>
-      <form onsubmit="handleCreateTransfer(event)">
-        <div class="form-group">
-          <label class="form-label">የሚላክ ምርት (ከእርሻ)</label>
-          <select id="trf-product" class="form-control" required></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">የሚላክ መጠን</label>
-          <input type="number" id="trf-qty" class="form-control" step="0.01" required>
+          <label class="form-label" data-i18n="supplierAddress">አድራሻ</label>
+          <input type="text" id="sup-address" class="form-control">
         </div>
         <div class="form-group">
           <label class="form-label">ማስታወሻ</label>
-          <input type="text" id="trf-notes" class="form-control" placeholder="ምሳሌ፡ የዛሬ ጥዋት ትኩስ ወተት">
+          <input type="text" id="sup-notes" class="form-control">
         </div>
-        <button type="submit" class="btn btn-primary" data-i18n="sendTransfer">ላክ</button>
+        <button type="submit" class="btn btn-primary" data-i18n="save">አቅራቢውን መዝግብ</button>
       </form>
     </div>
   </div>
 
-  <!-- Modal: አዲስ የእርሻ ምርት መዝገብ -->
-  <div id="modal-new-farm" class="modal-overlay">
+  <!-- Modal 9: አዲስ ደንበኛ መመዝገብ (Customer Modal) -->
+  <div id="modal-new-customer" class="modal-overlay">
     <div class="modal-sheet">
       <div class="modal-header">
-        <div class="modal-title" data-i18n="recordProduction">አዲስ የእርሻ/ወተት ምርት መመዝገብ</div>
-        <button class="modal-close" onclick="closeModal('modal-new-farm')">&times;</button>
+        <div class="modal-title">አዲስ ደንበኛ መመዝገብ</div>
+        <button class="modal-close" onclick="closeModal('modal-new-customer')">&times;</button>
       </div>
-      <form onsubmit="handleCreateFarmProduction(event)">
+      <form onsubmit="handleCreateCustomer(event)">
         <div class="form-group">
-          <label class="form-label">ምርት</label>
-          <select id="fp-product" class="form-control" required></select>
+          <label class="form-label">የደንበኛ ስም</label>
+          <input type="text" id="cust-name" class="form-control" required>
         </div>
         <div class="form-group">
-          <label class="form-label">የተመረተ መጠን</label>
-          <input type="number" id="fp-qty" class="form-control" step="0.01" required>
+          <label class="form-label">ስልክ ቁጥር</label>
+          <input type="text" id="cust-phone" class="form-control">
         </div>
         <div class="form-group">
-          <label class="form-label">የማምረቻ ወጪ (አማራጭ)</label>
-          <input type="number" id="fp-cost" class="form-control" step="0.01" value="0">
+          <label class="form-label">አድራሻ</label>
+          <input type="text" id="cust-address" class="form-control">
         </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="expiryDate">የሚያበቃበት ቀን (አማራጭ)</label>
-          <input type="date" id="fp-expiry" class="form-control">
-        </div>
-        <button type="submit" class="btn btn-primary" data-i18n="save">መዝግብ</button>
+        <button type="submit" class="btn btn-primary" data-i18n="save">ደንበኛውን መዝግብ</button>
       </form>
     </div>
   </div>
 
-  <!-- Modal: አዲስ ግዢ መመዝገብ -->
-  <div id="modal-new-purchase" class="modal-overlay">
+  <!-- Modal 10: አዲስ ተጠቃሚ መመዝገብ (User Modal - Super Admin) -->
+  <div id="modal-new-user" class="modal-overlay">
     <div class="modal-sheet">
       <div class="modal-header">
-        <div class="modal-title" data-i18n="recordPurchase">አዲስ ግዢ መመዝገብ</div>
-        <button class="modal-close" onclick="closeModal('modal-new-purchase')">&times;</button>
+        <div class="modal-title">አዲስ ተጠቃሚ መመዝገብ</div>
+        <button class="modal-close" onclick="closeModal('modal-new-user')">&times;</button>
       </div>
-      <form onsubmit="handleCreatePurchase(event)">
+      <form onsubmit="handleCreateUser(event)">
         <div class="form-group">
-          <label class="form-label" data-i18n="supplier">አቅራቢ</label>
-          <select id="pur-supplier" class="form-control"></select>
+          <label class="form-label">ሙሉ ስም</label>
+          <input type="text" id="nu-fullname" class="form-control" required>
         </div>
         <div class="form-group">
-          <label class="form-label">የተገዛ ምርት</label>
-          <select id="pur-product" class="form-control" required></select>
+          <label class="form-label">የተጠቃሚ ስም (Username)</label>
+          <input type="text" id="nu-username" class="form-control" required>
         </div>
         <div class="form-group">
-          <label class="form-label" data-i18n="stockLocation">የሚገባበት መጋዘን</label>
-          <select id="pur-location" class="form-control" required></select>
+          <label class="form-label">የይለፍ ቃል</label>
+          <input type="password" id="nu-password" class="form-control" required minlength="6">
         </div>
         <div class="form-group">
-          <label class="form-label">መጠን</label>
-          <input type="number" id="pur-qty" class="form-control" step="0.01" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="unitPrice">የአንዱ ግዢ ዋጋ (ETB)</label>
-          <input type="number" id="pur-price" class="form-control" step="0.01" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="additionalCost">ተጨማሪ ወጪ (ትራንስፖርት)</label>
-          <input type="number" id="pur-add-cost" class="form-control" step="0.01" value="0">
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="paymentAccount">የተከፈለበት አካውንት</label>
-          <select id="pur-account" class="form-control"></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="paidAmount">አሁን የተከፈለ ገንዘብ (ETB)</label>
-          <input type="number" id="pur-paid" class="form-control" step="0.01" required>
-        </div>
-        <button type="submit" class="btn btn-primary" data-i18n="save">ግዢውን አረጋግጥ</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal: አዲስ የምግብ አዘገጃጀት ማገናኛ -->
-  <div id="modal-new-recipe" class="modal-overlay">
-    <div class="modal-sheet">
-      <div class="modal-header">
-        <div class="modal-title" data-i18n="addRecipe">አዲስ ግብዓት አገናኝ</div>
-        <button class="modal-close" onclick="closeModal('modal-new-recipe')">&times;</button>
-      </div>
-      <form onsubmit="handleCreateRecipe(event)">
-        <div class="form-group">
-          <label class="form-label" data-i18n="parentMeal">የሬስቶራንት ምግብ</label>
-          <select id="rcp-meal" class="form-control" required></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="rawIngredient">ጥሬ ግብዓት</label>
-          <select id="rcp-ingredient" class="form-control" required></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="quantityNeeded">አስፈላጊ መጠን (ለ 1 ሰሃን)</label>
-          <input type="number" id="rcp-qty" class="form-control" step="0.001" placeholder="ምሳሌ፡ 0.250" required>
-        </div>
-        <button type="submit" class="btn btn-primary" data-i18n="save">አገናኝ</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal: ዕዳ ማስታረቅ/መክፈል -->
-  <div id="modal-settle-debt" class="modal-overlay">
-    <div class="modal-sheet">
-      <div class="modal-header">
-        <div class="modal-title" data-i18n="settleDebt">ዕዳ ማስታረቅ / መክፈል</div>
-        <button class="modal-close" onclick="closeModal('modal-settle-debt')">&times;</button>
-      </div>
-      <form onsubmit="handleSettleDebt(event)">
-        <div class="form-group">
-          <label class="form-label">እውቂያ ይምረጡ</label>
-          <select id="debt-contact" class="form-control" required></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">የክፍያ አካውንት</label>
-          <select id="debt-account" class="form-control" required></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">የሚከፈል መጠን (ETB)</label>
-          <input type="number" id="debt-amount" class="form-control" step="0.01" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">ማስታወሻ</label>
-          <input type="text" id="debt-notes" class="form-control">
-        </div>
-        <button type="submit" class="btn btn-primary" data-i18n="save">ክፍያውን መዝግብ</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal: አዲስ ደንበኛ ወይም አቅራቢ -->
-  <div id="modal-new-contact" class="modal-overlay">
-    <div class="modal-sheet">
-      <div class="modal-header">
-        <div class="modal-title" data-i18n="addContact">አዲስ እውቂያ መመዝገብ</div>
-        <button class="modal-close" onclick="closeModal('modal-new-contact')">&times;</button>
-      </div>
-      <form onsubmit="handleCreateContact(event)">
-        <div class="form-group">
-          <label class="form-label" data-i18n="contactName">ስም</label>
-          <input type="text" id="cnt-name" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">ዓይነት</label>
-          <select id="cnt-type" class="form-control">
-            <option value="customer">ደንበኛ (Customer)</option>
-            <option value="supplier">አቅራቢ (Supplier)</option>
+          <label class="form-label">ሚና (Role)</label>
+          <select id="nu-role" class="form-control" required>
+            <option value="manager">ስራ አስኪያጅ (Manager)</option>
+            <option value="super_admin">ዋና አስተዳዳሪ (Super Admin)</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="contactPhone">ስልክ ቁጥር</label>
-          <input type="text" id="cnt-phone" class="form-control">
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="contactAddress">አድራሻ</label>
-          <input type="text" id="cnt-address" class="form-control">
-        </div>
-        <button type="submit" class="btn btn-primary" data-i18n="save">መዝግብ</button>
+        <button type="submit" class="btn btn-primary" data-i18n="save">ተጠቃሚውን ፍጠር</button>
       </form>
     </div>
   </div>
 
-  <!-- Modal: ደረሰኝ ማሳያ (Receipt Modal) -->
+  <!-- Modal 11: ደረሰኝ ማሳያ (Receipt Popup Modal) -->
   <div id="modal-receipt" class="modal-overlay">
     <div class="modal-sheet">
       <div class="modal-header">
         <div class="modal-title" data-i18n="receipt">የሽያጭ ደረሰኝ</div>
         <button class="modal-close" onclick="closeModal('modal-receipt')">&times;</button>
       </div>
-      <div id="receipt-print-area" class="receipt-box">
+      <div id="receipt-content-box" style="background:#ffffff; border:1px dashed var(--border-color); padding:14px; border-radius:var(--radius-sm); font-family:monospace; margin-bottom:12px;">
         <!-- በ JS ይሞላል -->
       </div>
-      <div style="margin-top:14px; display:flex; gap:8px;">
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-secondary" onclick="closeModal('modal-receipt')" data-i18n="close">ዝጋ</button>
         <button class="btn btn-primary" onclick="window.print()">🖨️ አትም (Print)</button>
-        <button class="btn btn-secondary" onclick="closeModal('modal-receipt')">ዝጋ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 12: የደንበኛ ሙሉ የዱቤ ዝርዝር እና ክፍያ መቀበያ (Customer Debt Statement & Settle Modal) -->
+  <div id="modal-customer-statement" class="modal-overlay">
+    <div class="modal-sheet" style="max-width:600px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="cust-stmt-name">የደንበኛ ዱቤ መግለጫ</div>
+          <div id="cust-stmt-phone" style="font-size:0.8rem; color:var(--text-muted);">ስልክ፡ -</div>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-customer-statement')">&times;</button>
+      </div>
+
+      <!-- የገንዘብ ማጠቃለያ ሳጥኖች -->
+      <div class="stats-grid" style="margin-bottom:12px;">
+        <div class="stat-box highlight">
+          <div class="stat-label">ጠቅላላ የተበደረው</div>
+          <div id="cust-stmt-total-credit" class="stat-value primary">0.00 ETB</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">የተከፈለ ዕዳ</div>
+          <div id="cust-stmt-total-paid" class="stat-value">0.00 ETB</div>
+        </div>
+        <div class="stat-box danger-highlight">
+          <div class="stat-label">ቀሪ ያልተከፈለ ዕዳ</div>
+          <div id="cust-stmt-unpaid-debt" class="stat-value danger" style="font-size:1.15rem;">0.00 ETB</div>
+        </div>
+      </div>
+
+      <!-- የዕዳ ክፍያ መቀበያ ቅጽ (Settle Debt Form - Supports Partial Payment) -->
+      <div class="card" style="background:#f0fdf4; border:1px solid #bbf7d0; padding:10px; margin-bottom:12px;">
+        <div style="font-size:0.85rem; font-weight:800; color:#166534; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+          <span>💰</span> <span>የዕዳ ክፍያ መቀበያ (ሙሉ ወይም ከፊል ክፍያ)</span>
+        </div>
+        <form onsubmit="handleCustomerDebtPayment(event)">
+          <input type="hidden" id="cust-pay-contact-id" value="">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <div class="form-group" style="margin-bottom:6px;">
+              <label class="form-label" style="font-size:0.78rem;">የሚከፈለው መጠን (ETB)</label>
+              <input type="number" id="cust-pay-amount" class="form-control" step="0.01" required min="0.01" placeholder="0.00" oninput="calculateRemainingCustomerDebt()">
+            </div>
+            <div class="form-group" style="margin-bottom:6px;">
+              <label class="form-label" style="font-size:0.78rem;">የተከፈለበት ሂሳብ</label>
+              <select id="cust-pay-account-id" class="form-control" required></select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label class="form-label" style="font-size:0.78rem;">ማስታወሻ / ማጣቀሻ</label>
+            <input type="text" id="cust-pay-notes" class="form-control" placeholder="ምሳሌ፡ በጥሬ ገንዘብ የተከፈለ ከፊል ክፍያ">
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span id="cust-pay-remaining-preview" style="font-size:0.8rem; font-weight:700; color:#b45309;">ቀሪ እዳ፡ -</span>
+            <button type="submit" class="btn btn-primary btn-sm" style="padding:6px 16px;">ክፍያውን ተቀበል & ደረሰኝ አውጣ</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ደንበኛው የወሰዳቸው ምግቦች/ትዕዛዞች ዝርዝር (Orders & Dishes Taken) -->
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-header-clean">
+          <div class="card-title-sm"><span>🍽️</span> <span>የተወሰዱ ምግቦችና ትዕዛዞች ዝርዝር</span></div>
+          <span id="cust-stmt-orders-badge" class="badge-tag info">0 ትዕዛዞች</span>
+        </div>
+        <div id="cust-stmt-orders-container" style="max-height:220px; overflow-y:auto;">
+          <!-- በ JS ይሞላል -->
+        </div>
+      </div>
+
+      <!-- የተከፈሉ ክፍያዎች ታሪክ (Payment History) -->
+      <div class="card">
+        <div class="card-header-clean">
+          <div class="card-title-sm"><span>🧾</span> <span>የክፍያዎች ታሪክ</span></div>
+          <span id="cust-stmt-payments-badge" class="badge-tag paid">0 ክፍያዎች</span>
+        </div>
+        <div id="cust-stmt-payments-container" style="max-height:180px; overflow-y:auto;">
+          <!-- በ JS ይሞላል -->
+        </div>
       </div>
     </div>
   </div>
@@ -1025,18 +1282,5 @@
   <script src="./js/db.js"></script>
   <script src="./js/api.js"></script>
   <script src="./js/app.js"></script>
-  
-  <script>
-    // Service Worker ምዝገባ
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then((reg) => {
-          console.log('Service Worker Registered Successfully:', reg.scope);
-        }).catch((err) => {
-          console.warn('Service Worker registration failed:', err);
-        });
-      });
-    }
-  </script>
 </body>
 </html>

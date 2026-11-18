@@ -1,29 +1,54 @@
 /* ==========================================================================
-   ተክሉ ጌታቸው ቢዝነስ - ዘመናዊ ሞባይል-ተኮር ቅጥ (Mobile-First CSS)
+   ተክሉ ምግብ ቤት (Teklu Restaurant Management)
+   ዘመናዊ ሞባይል-ተኮር ቅጥ (Mobile-First Modern CSS - Responsive from 320px)
    ========================================================================== */
 
 :root {
-  --primary: #1b4332;
-  --primary-light: #2d6a4f;
-  --primary-accent: #40916c;
-  --primary-soft: #d8f3dc;
-  --secondary: #d4a373;
-  --bg-main: #f8f9fa;
+  /* ዋና ቀለሞች (Professional Emerald Theme) */
+  --primary: #059669;          /* Emerald 600 */
+  --primary-hover: #047857;    /* Emerald 700 */
+  --primary-dark: #064e3b;     /* Emerald 900 */
+  --primary-light: #10b981;    /* Emerald 500 */
+  --primary-soft: #ecfdf5;     /* Emerald 50 */
+  --primary-border: #a7f3d0;   /* Emerald 200 */
+
+  /* ገለልተኛ ቀለሞች (Clean White & Slate) */
+  --bg-body: #f8fafc;          /* Slate 50 */
   --bg-card: #ffffff;
-  --text-main: #1f2937;
-  --text-muted: #6b7280;
-  --border-color: #e5e7eb;
+  --bg-subtle: #f1f5f9;        /* Slate 100 */
+  --border-color: #e2e8f0;     /* Slate 200 */
+  --border-focus: #10b981;
+
+  /* የጽሁፍ ቀለሞች */
+  --text-main: #0f172a;        /* Slate 900 */
+  --text-secondary: #475569;   /* Slate 600 */
+  --text-muted: #94a3b8;       /* Slate 400 */
+
+  /* የሁኔታ ቀለሞች */
   --success: #10b981;
+  --success-bg: #ecfdf5;
   --warning: #f59e0b;
+  --warning-bg: #fffbeb;
   --danger: #ef4444;
-  --info: #3b82f6;
+  --danger-bg: #fef2f2;
+  --info: #0284c7;
+  --info-bg: #f0f9ff;
+
+  /* ራዲየስ እና ጥላዎች */
+  --radius-xs: 6px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08);
-  --bottom-nav-height: 64px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+
+  /* አቀማመጥ ልኬቶች */
   --top-bar-height: 56px;
+  --bottom-nav-height: 64px;
+  --sidebar-width: 250px;
 }
 
 * {
@@ -34,121 +59,400 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: var(--bg-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Ethiopic", Helvetica, Arial, sans-serif;
+  background-color: var(--bg-body);
   color: var(--text-main);
   line-height: 1.5;
+  min-height: 100vh;
   padding-top: var(--top-bar-height);
   padding-bottom: calc(var(--bottom-nav-height) + 16px);
-  min-height: 100vh;
+  overflow-x: hidden;
 }
 
-/* 1. ቋሚ የላይኛው ራስጌ (Top App Bar) */
+/* 1. የላይኛው ራስጌ (Top Navigation Bar) */
 .top-app-bar {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   height: var(--top-bar-height);
-  background-color: var(--primary);
-  color: #ffffff;
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 12px;
   z-index: 1000;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .brand-section {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .brand-logo {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
-  background: #fff;
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+  padding: 4px;
+  flex-shrink: 0;
 }
 
 .brand-title {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
+  color: var(--primary-dark);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
 }
 
 .top-bar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .status-badge {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   padding: 4px 8px;
-  border-radius: 20px;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   gap: 5px;
   font-weight: 600;
-}
-
-.status-badge.online {
-  background-color: rgba(16, 185, 129, 0.2);
-  color: #a7f3d0;
-  border: 1px solid #10b981;
-}
-
-.status-badge.offline {
-  background-color: rgba(239, 68, 68, 0.2);
-  color: #fecaca;
-  border: 1px solid #ef4444;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
 }
 
 .status-badge .dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background-color: currentColor;
 }
 
-.badge-pending {
-  background-color: var(--warning);
-  color: #000;
-  padding: 1px 6px;
+.status-badge.online {
+  background: var(--success-bg);
+  color: var(--primary-hover);
+  border: 1px solid var(--primary-border);
+}
+.status-badge.online .dot {
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+.status-badge.offline {
+  background: var(--warning-bg);
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.status-badge.offline .dot {
+  background: var(--warning);
+}
+
+.badge-count {
+  background: var(--danger);
+  color: #ffffff;
+  font-size: 0.65rem;
+  padding: 1px 5px;
   border-radius: 10px;
-  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .btn-icon {
-  background: rgba(255,255,255,0.15);
-  border: none;
-  color: #fff;
-  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  height: 34px;
+  min-width: 34px;
   border-radius: var(--radius-sm);
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  padding: 0 6px;
+  transition: all 0.2s;
 }
 
-/* 2. ቋሚ የታችኛው አሰሳ (Bottom Navigation Bar) */
+.btn-icon:hover {
+  background: var(--bg-subtle);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* 2. አቀማመጥ እና ገጾች (Main App Container & Layout) */
+.app-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 10px;
+}
+
+.desktop-sidebar {
+  display: none; /* በሞባይል ላይ አይታይም */
+}
+
+.page {
+  display: none;
+  animation: fadeIn 0.15s ease-in-out;
+}
+
+.page.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 3. ካርዶች እና ሳጥኖች (Cards & Stats) */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 12px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.card-header-clean {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-title-sm {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+/* የስታቲስቲክስ ግሪድ (Stats Grid) */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.stat-box {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-box.highlight {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+}
+
+.stat-box.warning-highlight {
+  background: var(--warning-bg);
+  border-color: #fde68a;
+}
+
+.stat-box.danger-highlight {
+  background: var(--danger-bg);
+  border-color: #fecaca;
+}
+
+.stat-box.info-highlight {
+  background: var(--info-bg);
+  border-color: #bae6fd;
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+  word-break: break-all;
+}
+
+.stat-value.primary { color: var(--primary); }
+.stat-value.danger { color: var(--danger); }
+.stat-value.warning { color: var(--warning); }
+.stat-value.info { color: var(--info); }
+
+/* 4. ቅጾች እና ግብዓቶች (Form Controls) */
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.form-control {
+  width: 100%;
+  height: 42px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.form-control:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 70px;
+  resize: vertical;
+}
+
+select.form-control {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+  padding-right: 32px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* 5. አዝራሮች (Touch-friendly Buttons >= 44px) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  user-select: none;
+  width: 100%;
+}
+
+.btn-sm {
+  min-height: 34px;
+  height: 34px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  width: auto;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+.btn-primary:hover, .btn-primary:active {
+  background-color: var(--primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--bg-subtle);
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+.btn-secondary:hover, .btn-secondary:active {
+  background-color: var(--border-color);
+}
+.btn-secondary.active {
+  background-color: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: #ffffff;
+}
+.btn-danger:hover {
+  background-color: #dc2626;
+}
+
+.btn-warning {
+  background-color: var(--warning);
+  color: #ffffff;
+}
+
+.btn-outline-primary {
+  background: transparent;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.btn-outline-primary:hover {
+  background: var(--primary-soft);
+}
+
+.btn-group {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.btn-group .btn {
+  flex: 1;
+  min-width: 75px;
+  white-space: nowrap;
+}
+
+/* 6. የታችኛው አሰሳ አሞሌ (Bottom Navigation Bar) */
 .bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   height: var(--bottom-nav-height);
-  background-color: #ffffff;
+  background: #ffffff;
   border-top: 1px solid var(--border-color);
   display: flex;
-  justify-content: space-around;
   align-items: center;
+  justify-content: space-around;
   z-index: 1000;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .nav-item {
@@ -157,276 +461,238 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 6px 0;
-  cursor: pointer;
+  height: 100%;
+  background: transparent;
   border: none;
-  background: none;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 4px 2px;
+}
+
+.nav-item .nav-icon {
+  font-size: 1.25rem;
+  margin-bottom: 2px;
+  transition: transform 0.2s;
 }
 
 .nav-item.active {
   color: var(--primary);
-}
-
-.nav-icon {
-  font-size: 1.25rem;
-}
-
-/* 3. ዋና ይዘት (Main Container) */
-.app-container {
-  max-width: 768px;
-  margin: 0 auto;
-  padding: 12px 16px;
-}
-
-.page {
-  display: none;
-}
-
-.page.active {
-  display: block;
-}
-
-/* 4. ካርዶች እና ስታቲስቲክስ (Cards & Widgets) */
-.card {
-  background-color: var(--bg-card);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  margin-bottom: 14px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
-}
-
-.card-title {
-  font-size: 1.05rem;
   font-weight: 700;
-  margin-bottom: 12px;
-  color: var(--primary);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+.nav-item.active .nav-icon {
+  transform: translateY(-2px);
 }
 
-.stat-box {
-  background-color: var(--bg-main);
-  padding: 12px;
-  border-radius: var(--radius-sm);
+/* 7. ሞባይል-ተኮር የግብይት ካርዶች (Mobile Transaction Cards) */
+.trx-card {
+  background: #ffffff;
   border: 1px solid var(--border-color);
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.stat-value {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--primary);
-}
-
-.stat-value.money {
-  color: #065f46;
-}
-
-.stat-value.expense {
-  color: #991b1b;
-}
-
-.stat-value.profit {
-  color: #1e40af;
-}
-
-.badge-tag {
-  display: inline-block;
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-weight: 600;
-}
-
-.badge-tag.farm { background: #dcfce7; color: #166534; }
-.badge-tag.restaurant { background: #ffedd5; color: #9a3412; }
-.badge-tag.external { background: #e0e7ff; color: #3730a3; }
-
-/* 5. ቁልፎች (Buttons) */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  padding: 10px 16px;
-  border-radius: var(--radius-sm);
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  border: none;
-  min-height: 44px;
-  text-decoration: none;
-  width: 100%;
+  transition: border-color 0.2s;
 }
 
-.btn-primary { background-color: var(--primary); color: #fff; }
-.btn-primary:active { background-color: var(--primary-light); }
-.btn-secondary { background-color: #e5e7eb; color: var(--text-main); }
-.btn-success { background-color: var(--success); color: #fff; }
-.btn-danger { background-color: var(--danger); color: #fff; }
-.btn-warning { background-color: var(--warning); color: #000; }
-
-.btn-sm {
-  min-height: 32px;
-  padding: 6px 10px;
-  font-size: 0.8rem;
-  width: auto;
+.trx-card:hover {
+  border-color: var(--primary-border);
 }
 
-.btn-group {
+.trx-row {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
 }
 
-/* 6. ቅጾች እና ጽሁፍ ማስገቢያዎች (Forms & Inputs) */
-.form-group {
-  margin-bottom: 12px;
+.trx-title {
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 0.88rem;
 }
 
-.form-label {
-  display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin-bottom: 4px;
+.trx-date {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.trx-amount {
+  font-size: 0.92rem;
+  font-weight: 800;
   color: var(--text-main);
 }
 
-.form-control {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
+.trx-items-summary {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  margin: 2px 0;
+}
+
+/* ባጆች (Badges) */
+.badge-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.badge-tag.paid {
+  background: var(--success-bg);
+  color: var(--primary-hover);
+  border: 1px solid var(--primary-border);
+}
+
+.badge-tag.partial {
+  background: var(--warning-bg);
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.badge-tag.credit, .badge-tag.unpaid {
+  background: var(--danger-bg);
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.badge-tag.neutral {
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   border: 1px solid var(--border-color);
-  font-size: 0.95rem;
-  background-color: #fff;
-  min-height: 44px;
 }
 
-.form-control:focus {
-  outline: none;
-  border-color: var(--primary-accent);
-  box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.2);
-}
-
-/* 7. POS እና የሽያጭ ካታሎግ (POS Grid & Cart) */
-.pos-search-bar {
-  margin-bottom: 12px;
+/* 8. POS / ሽያጭ ዲዛይን (POS Cards & Cart) */
+.pos-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .pos-product-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  max-height: 45vh;
-  overflow-y: auto;
-  padding-bottom: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
 }
 
-.product-pos-card {
-  background: #fff;
+.pos-prod-card {
+  background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 10px;
+  padding: 10px 8px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  min-height: 90px;
+  transition: all 0.2s;
+  min-height: 105px;
+  position: relative;
 }
 
-.product-pos-card:active {
-  background-color: var(--primary-soft);
-  border-color: var(--primary-accent);
+.pos-prod-card:active {
+  transform: scale(0.97);
 }
 
-.product-pos-name {
-  font-size: 0.9rem;
+.pos-prod-card.out-of-stock {
+  opacity: 0.6;
+  border-color: #fecaca;
+  cursor: not-allowed;
+}
+
+.pos-prod-name {
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-main);
-  line-height: 1.2;
+  line-height: 1.25;
+  margin-bottom: 4px;
 }
 
-.product-pos-meta {
-  font-size: 0.75rem;
+.pos-prod-meta {
+  font-size: 0.7rem;
   color: var(--text-muted);
+}
+
+.pos-prod-price {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--primary);
   margin-top: 4px;
 }
 
-.product-pos-price {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--primary);
-  margin-top: 6px;
-}
-
 .cart-section {
-  background: #fff;
+  background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 12px;
-  margin-top: 12px;
+  box-shadow: var(--shadow-sm);
 }
 
 .cart-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   padding: 8px 0;
   border-bottom: 1px dashed var(--border-color);
+}
+
+.cart-item-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  flex: 1;
 }
 
 .cart-qty-ctrl {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin: 0 8px;
 }
 
-.qty-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+.btn-qty {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
   border: 1px solid var(--border-color);
-  background: var(--bg-main);
+  background: var(--bg-subtle);
+  font-size: 0.95rem;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
-  font-size: 1rem;
   cursor: pointer;
 }
 
-/* 8. ሞዳሎች (Modals & Overlays) */
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin: 4px 0;
+}
+
+/* 9. ሞዳሎች እና ሺቶች (Modals & Bottom Sheets) */
 .modal-overlay {
-  display: none;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0,0,0,0.5);
-  z-index: 2000;
-  align-items: flex-end;
+  background-color: rgba(15, 23, 42, 0.55);
+  display: none;
+  align-items: flex-end; /* ሞባይል ላይ ከታች ወደ ላይ */
   justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(2px);
 }
 
 .modal-overlay.active {
@@ -434,102 +700,102 @@ body {
 }
 
 .modal-sheet {
-  background-color: #fff;
+  background: #ffffff;
   width: 100%;
-  max-width: 600px;
-  max-height: 85vh;
+  max-width: 550px;
+  max-height: 90vh;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 20px;
+  padding: 16px;
   overflow-y: auto;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 .modal-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  margin-bottom: 14px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .modal-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-main);
 }
 
 .modal-close {
-  background: none;
+  background: transparent;
   border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
+  font-size: 1.4rem;
   color: var(--text-muted);
-}
-
-/* 9. ደረሰኝ (Receipt Printable Card) */
-.receipt-box {
-  background: #fff;
-  border: 1px dashed #333;
-  padding: 16px;
-  border-radius: var(--radius-sm);
-  font-family: monospace;
-  font-size: 0.85rem;
-}
-
-.receipt-header {
-  text-align: center;
-  margin-bottom: 12px;
-}
-
-.receipt-row {
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
   display: flex;
-  justify-content: space-between;
-  padding: 3px 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
 }
 
-.receipt-divider {
-  border-top: 1px dashed #333;
-  margin: 8px 0;
+.modal-close:hover {
+  background: var(--bg-subtle);
+  color: var(--danger);
 }
 
-/* 10. ሠንጠረዥ (Responsive Tables) */
+/* 10. ሰንጠረዦች (Responsive Tables) */
 .table-responsive {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .app-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
-}
-
-.app-table th, .app-table td {
-  padding: 8px 10px;
+  font-size: 0.82rem;
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
 }
 
 .app-table th {
-  background-color: var(--bg-main);
-  color: var(--text-muted);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   font-weight: 700;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
 }
 
-/* 11. የመግቢያ ገጽ (Login Overlay) */
+.app-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
+}
+
+.app-table tr:hover td {
+  background: var(--bg-subtle);
+}
+
+/* 11. የመግቢያ ስክሪን (Login Screen) */
 .login-screen {
-  display: none;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, var(--primary) 0%, #081c15 100%);
-  z-index: 3000;
-  padding: 24px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f8fafc 100%);
+  display: none;
   align-items: center;
   justify-content: center;
+  z-index: 3000;
+  padding: 16px;
 }
 
 .login-screen.active {
@@ -538,11 +804,12 @@ body {
 
 .login-box {
   background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
   width: 100%;
   max-width: 400px;
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-lg);
 }
 
 .login-header {
@@ -551,19 +818,167 @@ body {
 }
 
 .login-logo {
-  width: 64px;
-  height: 64px;
-  margin-bottom: 8px;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 10px;
 }
 
 .login-title {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 800;
-  color: var(--primary);
+  color: var(--primary-dark);
 }
 
 .login-subtitle {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin-top: 4px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+/* 12. የዴስክቶፕ እና ታብሌት አቀማመጥ (Desktop & Tablet >= 768px) */
+@media (min-width: 768px) {
+  body {
+    padding-left: var(--sidebar-width);
+    padding-bottom: 20px;
+  }
+
+  .top-app-bar {
+    left: var(--sidebar-width);
+  }
+
+  .desktop-sidebar {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background: #ffffff;
+    border-right: 1px solid var(--border-color);
+    z-index: 1100;
+    padding: 16px 12px;
+  }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 16px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .sidebar-brand-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--primary-dark);
+    line-height: 1.2;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    text-align: left;
+  }
+
+  .sidebar-link:hover {
+    background: var(--bg-subtle);
+    color: var(--primary);
+  }
+
+  .sidebar-link.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .sidebar-link .sidebar-icon {
+    font-size: 1.15rem;
+  }
+
+  .bottom-nav {
+    display: none !important; /* በዴስክቶፕ ላይ የታችኛው አሞሌ ይደበቃል */
+  }
+
+  .pos-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    align-items: start;
+  }
+
+  .modal-overlay {
+    align-items: center; /* ዴስክቶፕ ላይ ሞዳሉ መሃል ላይ */
+  }
+
+  .modal-sheet {
+    border-radius: var(--radius-lg);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 13. አነስተኛ ስልኮች (Small Phones 320px - 360px Optimization) */
+@media (max-width: 360px) {
+  .app-container {
+    padding: 8px 6px;
+  }
+
+  .brand-title {
+    max-width: 120px;
+    font-size: 0.85rem;
+  }
+
+  .card {
+    padding: 10px 8px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr; /* 320px ላይ አንድ አምድ */
+    gap: 6px;
+  }
+
+  .pos-product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .nav-item {
+    font-size: 0.62rem;
+  }
+  .nav-item .nav-icon {
+    font-size: 1.1rem;
+  }
+}
+
+/* 14. ዘመናዊ መውጫ ቁልፍ (Modern Logout Button Styles) */
+.btn-logout:hover {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border-color: #fca5a5 !important;
+  transform: translateY(-1px);
+}
+.btn-logout:active {
+  transform: translateY(0);
 }

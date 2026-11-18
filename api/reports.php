@@ -1,5 +1,6 @@
 <?php
 /**
+ * ተክሉ ምግብ ቤት (Teklu Restaurant Management)
  * ሪፖርቶች እና የትርፍና ኪሳራ ስሌት API (Reports & P&L API)
  */
 
@@ -12,7 +13,6 @@ require_once __DIR__ . '/../helpers/auth.php';
 $user = get_authenticated_user();
 $pdo = get_db_connection();
 
-// የማናጀር ፈቃድ ምርመራ
 if (!check_permission($user, 'can_view_pl')) {
     send_error('የትርፍና ኪሳራ ሪፖርት የማየት ፈቃድ የለዎትም', 403);
 }
@@ -49,7 +49,7 @@ if ($type === 'pl') {
     $cogs = (float)$stmtCogs->fetchColumn();
 
     // ጠቅላላ ትርፍ (Gross Profit = Revenue - COGS)
-    $gross_profit = $total_revenue - $cogs;
+    $gross_profit = round($total_revenue - $cogs, 2);
     $gross_margin_pct = $total_revenue > 0 ? round(($gross_profit / $total_revenue) * 100, 2) : 0.0;
 
     // 1.3 የስራ ማስኬጃ ወጪዎች (Operating Expenses በየምድቡ)
@@ -57,7 +57,7 @@ if ($type === 'pl') {
         SELECT c.name_am as category_name, COALESCE(SUM(e.amount), 0) as total_amount
         FROM expenses e
         JOIN categories c ON e.category_id = c.id
-        WHERE e.expense_date BETWEEN :start_d AND :end_d
+        WHERE DATE(e.expense_date) BETWEEN :start_d AND :end_d
         GROUP BY e.category_id
         ORDER BY total_amount DESC
     ");
@@ -70,27 +70,17 @@ if ($type === 'pl') {
     }
 
     // 1.4 የተጣራ ትርፍ (Net Profit = Gross Profit - Operating Expenses)
-    $net_profit = $gross_profit - $total_operating_expenses;
+    $net_profit = round($gross_profit - $total_operating_expenses, 2);
     $net_margin_pct = $total_revenue > 0 ? round(($net_profit / $total_revenue) * 100, 2) : 0.0;
 
     // 1.5 የባለቤት መውጣት (Owner Withdrawals) - ከስራ ማስኬጃ ወጪ ውጭ!
     $stmtWth = $pdo->prepare("
         SELECT COALESCE(SUM(amount), 0)
         FROM withdrawals
-        WHERE withdrawal_date BETWEEN :start_d AND :end_d
+        WHERE DATE(withdrawal_date) BETWEEN :start_d AND :end_d
     ");
     $stmtWth->execute([':start_d' => $start_date, ':end_d' => $end_date]);
     $total_withdrawals = (float)$stmtWth->fetchColumn();
-
-    // 1.6 የውስጥ ዝውውሮች (Internal Transfers - መረጃ ብቻ፣ ገቢ ወይም ወጪ ተደርጎ አልተደመረም!)
-    $stmtTrf = $pdo->prepare("
-        SELECT COALESCE(SUM(transfer_value), 0) as total_value, COUNT(id) as count
-        FROM internal_transfers
-        WHERE DATE(transfer_date) BETWEEN :start_d AND :end_d AND status = 'received'
-    ");
-    $stmtTrf->execute([':start_d' => $start_date, ':end_d' => $end_date]);
-    $trfData = $stmtTrf->fetch();
-    $internal_transfer_value = (float)$trfData['total_value'];
 
     send_success('የትርፍና ኪሳራ ሪፖርት', [
         'period' => [
@@ -108,8 +98,7 @@ if ($type === 'pl') {
             'expenses_breakdown'       => $expenses_by_category,
             'net_profit'               => $net_profit,
             'net_margin_percentage'    => $net_margin_pct,
-            'owner_withdrawals'        => $total_withdrawals,
-            'internal_transfers_note'  => 'የውስጥ ዝውውር ድምር: ' . number_format($internal_transfer_value, 2) . ' ETB (ለተጠቃለለው ድርጅት ትርፍ ስሌት ገቢ ወይም ወጪ ተደርጎ አልተደመረም)'
+            'owner_withdrawals'        => $total_withdrawals
         ]
     ]);
 }

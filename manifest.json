@@ -1,24 +1,64 @@
 {
-  "name": "ተክሉ ጌታቸው የከብት እርባታ እና የወተት ተዋጽኦ ማቀነባበሪያ",
-  "short_name": "ተክሉ ቢዝነስ",
-  "description": "ተክሉ ጌታቸው የከብት እርባታ እና የወተት ተዋጽኦ ማቀነባበሪያ ድርጅት የንግድ ስራ አመራር ሥርዓት",
+  "name": "ተክሉ ምግብ ቤት",
+  "short_name": "ተክሉ ምግብ ቤት",
+  "description": "ተክሉ ምግብ ቤት - የምግብ ዝግጅት፣ እቃ መረከቢያ፣ ሽያጭ፣ የደንበኛ ዱቤ እና ፋይናንስ አመራር ሥርዓት",
+  "id": "teklu-food-app",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#1b4332",
-  "theme_color": "#2d6a4f",
+  "background_color": "#ffffff",
+  "theme_color": "#059669",
   "orientation": "portrait-primary",
+  "lang": "am",
+  "dir": "ltr",
+  "categories": ["business", "food", "finance"],
   "icons": [
     {
       "src": "./icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
       "src": "./icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ሽያጭ (POS)",
+      "short_name": "POS",
+      "description": "የምግብ እና ምርቶች ሽያጭ ማዕከል",
+      "url": "./index.html#pos",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "እቃ መረከቢያ",
+      "short_name": "መረከቢያ",
+      "description": "ምርቶችን ከአቅራቢ መረከቢያ",
+      "url": "./index.html#receiving",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "ገንዘብ መውጣት",
+      "short_name": "መውጣት",
+      "description": "ገንዘብ መውጣት መመዝገቢያ",
+      "url": "./index.html#withdrawals",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

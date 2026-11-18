@@ -1,5 +1,6 @@
 <?php
 /**
+ * ተክሉ ምግብ ቤት (Teklu Restaurant Management)
  * የሂሳብ እና የክምችት ቀመሮች ሄልፐር (Accounting & Stock Management Engine)
  */
 
@@ -91,7 +92,6 @@ function update_weighted_average_cost(PDO $pdo, int $product_id, float $new_qty,
         return;
     }
 
-    // ያለውን ጠቅላላ ክምችት እና አሁን ያለውን የግዢ ወጪ ማግኘት
     $stmt = $pdo->prepare("SELECT purchase_cost FROM products WHERE id = :id");
     $stmt->execute([':id' => $product_id]);
     $prod = $stmt->fetch();
@@ -129,7 +129,7 @@ function record_payment(
     string $payment_date,
     ?string $notes,
     int $created_by,
-    bool $is_inflow // true ከሆነ ገቢ (ይጨምራል)፣ false ከሆነ ወጪ (ይቀንሳል)
+    bool $is_inflow // true = ገቢ (balance increases), false = ወጪ (balance decreases)
 ): string {
     $uuid = bin2hex(random_bytes(16));
 
@@ -162,4 +162,110 @@ function record_payment(
     ]);
 
     return $uuid;
+}
+
+/**
+ * የምርት ወይም የምግብ ሬሲፒ ግብዓቶች ክምችት በቂ መሆኑን ማረጋገጥ
+ * Prevent sales if there is insufficient ingredient stock
+ */
+function check_ingredients_stock(PDO $pdo, int $product_id, float $ordered_qty): array {
+    // 1. የምርቱ ሬሲፒ መኖሩን መፈተሽ
+    $stmtRcp = $pdo->prepare("
+        SELECT r.*, ing.name_am as ing_name_am, ing.name_en as ing_name_en, ing.unit as ing_unit,
+               COALESCE((SELECT SUM(sl.quantity) FROM stock_levels sl WHERE sl.product_id = r.ingredient_product_id), 0) as current_stock
+        FROM recipes r
+        JOIN products ing ON r.ingredient_product_id = ing.id
+        WHERE r.parent_product_id = :p_id
+    ");
+    $stmtRcp->execute([':p_id' => $product_id]);
+    $ingredients = $stmtRcp->fetchAll();
+
+    if (!empty($ingredients)) {
+        // ምግብ ነው - እያንዳንዱ ግብዓት በቂ መሆኑን እንመርምር
+        foreach ($ingredients as $ing) {
+            $required = round((float)$ing['quantity_needed'] * $ordered_qty, 3);
+            $available = (float)$ing['current_stock'];
+            if ($available < $required) {
+                return [
+                    'sufficient'         => false,
+                    'is_recipe'          => true,
+                    'ingredient_name_am' => $ing['ing_name_am'],
+                    'ingredient_name_en' => $ing['ing_name_en'],
+                    'required'           => $required,
+                    'available'          => $available,
+                    'unit'               => $ing['ing_unit'] ?: $ing['unit'],
+                    'message'            => sprintf(
+                        'በቂ የግብዓት ክምችት የለም! %s (%s) የሚያስፈልገው: %s %s፣ በአሁን ሰዓት ያለው: %s %s ብቻ ነው።',
+                        $ing['ing_name_am'],
+                        $ing['ing_name_en'],
+                        $required,
+                        $ing['unit'],
+                        $available,
+                        $ing['unit']
+                    )
+                ];
+            }
+        }
+        return ['sufficient' => true, 'is_recipe' => true, 'ingredients' => $ingredients];
+    } else {
+        // ተራ ምርት ነው (ቀጥታ የሚሸጥ) - የራሱ ክምችት ይፈተሻል
+        $stmtProd = $pdo->prepare("
+            SELECT p.name_am, p.name_en, p.unit,
+                   COALESCE((SELECT SUM(sl.quantity) FROM stock_levels sl WHERE sl.product_id = p.id), 0) as current_stock
+            FROM products p
+            WHERE p.id = :id
+        ");
+        $stmtProd->execute([':id' => $product_id]);
+        $prod = $stmtProd->fetch();
+        if ($prod) {
+            $available = (float)$prod['current_stock'];
+            if ($available < $ordered_qty) {
+                return [
+                    'sufficient'         => false,
+                    'is_recipe'          => false,
+                    'ingredient_name_am' => $prod['name_am'],
+                    'ingredient_name_en' => $prod['name_en'],
+                    'required'           => $ordered_qty,
+                    'available'          => $available,
+                    'unit'               => $prod['unit'],
+                    'message'            => sprintf(
+                        'በቂ ክምችት የለም! %s የሚያስፈልገው: %s %s፣ በአሁን ሰዓት ያለው: %s %s ብቻ ነው።',
+                        $prod['name_am'],
+                        $ordered_qty,
+                        $prod['unit'],
+                        $available,
+                        $prod['unit']
+                    )
+                ];
+            }
+        }
+        return ['sufficient' => true, 'is_recipe' => false];
+    }
+}
+
+/**
+ * የሬሲፒ ግብዓቶች ወጪ ስሌት (Calculate Recipe Cost & Cost per Serving)
+ */
+function calculate_recipe_cost(PDO $pdo, int $product_id): array {
+    $stmt = $pdo->prepare("
+        SELECT r.*, ing.purchase_cost, ing.selling_price as ing_selling_price
+        FROM recipes r
+        JOIN products ing ON r.ingredient_product_id = ing.id
+        WHERE r.parent_product_id = :p_id
+    ");
+    $stmt->execute([':p_id' => $product_id]);
+    $ingredients = $stmt->fetchAll();
+
+    $total_cost = 0.0;
+    foreach ($ingredients as $ing) {
+        $qty = (float)$ing['quantity_needed'];
+        $cost = (float)$ing['purchase_cost'];
+        $total_cost += ($qty * $cost);
+    }
+
+    return [
+        'cost_per_serving' => round($total_cost, 2),
+        'ingredients_count'=> count($ingredients),
+        'ingredients'      => $ingredients
+    ];
 }

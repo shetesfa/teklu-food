@@ -1,6 +1,6 @@
 /**
- * ተክሉ ጌታቸው ቢዝነስ - የሁለት ቋንቋ መዝገበ-ቃላት (Bilingual Dictionary)
- * አማርኛ (ነባሪ) እና እንግሊዝኛ
+ * ተክሉ ምግብ ቤት (Teklu Restaurant Management)
+ * የቋንቋ መዝገበ-ቃላት (Bilingual Dictionary)
  */
 
 const I18N = {
@@ -8,245 +8,228 @@ const I18N = {
 
   translations: {
     am: {
-      appName: 'ተክሉ ጌታቸው የከብት እርባታ እና የወተት ተዋጽኦ ማቀነባበሪያ',
-      shortName: 'ተክሉ ቢዝነስ',
+      appName: 'ተክሉ ምግብ ቤት',
+      shortName: 'ተክሉ ምግብ ቤት',
       currency: 'ETB',
       
       // ሁኔታዎች
-      online: 'በመስመር ላይ (Online)',
-      offline: 'ከመስመር ውጭ (Offline)',
+      online: 'በመስመር ላይ',
+      offline: 'ከመስመር ውጭ',
       pendingSync: 'ያልተመሳሰሉ',
       syncNow: 'አሁን አመሳስል',
       syncSuccess: 'ሁሉም መረጃዎች በተሳካ ሁኔታ ተመሳስለዋል',
       
-      // ዳሰሳ
+      // ዋና ዳሰሳ (Navigation)
       navDashboard: 'ዳሽቦርድ',
       navSales: 'ሽያጭ (POS)',
+      navReceiving: 'እቃ መረከቢያ',
+      navFoodRecipe: 'የምግብ ዝርዝር',
       navStock: 'ክምችት',
-      navFinance: 'ፋይናንስ',
+      navCustomerDebts: 'የደንበኛ ዱቤ',
+      navWithdrawals: 'ገንዘብ መውጣት',
+      navExpenses: 'ወጪዎች',
+      navSuppliers: 'አቅራቢዎች',
       navMore: 'ተጨማሪ',
 
-      // ዳሽቦርድ
-      todaySales: 'የዛሬ ሽያጭ',
-      todayPurchases: 'የዛሬ ግዢ',
-      todayExpenses: 'የዛሬ ወጪ',
-      todayWithdrawals: 'የባለቤት መውጣት',
+      // ዳሽቦርድ (Dashboard)
+      dashboardTitle: 'የንግድ ስራ ማጠቃለያ ዳሽቦርድ',
+      todaySales: 'ሽያጭ',
+      todayPurchases: 'ግዢ',
+      todayExpenses: 'የስራ ማስኬጃ ወጪ',
+      todayWithdrawals: 'የወጣ ገንዘብ (መውጣት)',
       cashBalance: 'የእጅ ጥሬ ገንዘብ',
       cbeBalance: 'ንግድ ባንክ (CBE)',
       telebirrBalance: 'ቴሌብር (Telebirr)',
       otherBanksBalance: 'ሌሎች ባንኮች',
+      totalLiquid: 'በእጅና በባንክ ያለ ጠቅላላ ገንዘብ',
+      financialAccountsBalance: 'በእጅና በባንክ ያሉ የገንዘብ ሂሳቦች',
       stockValuation: 'ጠቅላላ የክምችት ዋጋ',
-      estimatedGrossProfit: 'የተገመተ ጠቅላላ ትርፍ',
-      estimatedNetProfit: 'የተገመተ የተጣራ ትርፍ',
-      lowStockAlert: 'ዝቅተኛ ክምችት ያላቸው እቃዎች',
-      supplierDebt: 'ያልተከፈለ የአቅራቢ ዕዳ',
-      customerDebt: 'ያልተሰበሰበ የደንበኛ ዕዳ',
+      estimatedGrossProfit: 'ጠቅላላ ትርፍ (የምግብ ማዘጋጃ ወጪ ተቀንሶ)',
+      estimatedNetProfit: 'የተጣራ ትርፍ (ሁሉም ወጪዎች ተቀንሰው)',
+      lowStockAlert: 'ዝቅተኛ ክምችት ማስጠንቀቂያ',
+      supplierDebt: 'ለአቅራቢ የሚከፈል ዕዳ',
+      customerDebt: 'ከደንበኛ የሚሰበሰብ ዱቤ',
       filterToday: 'ዛሬ',
+      filterYesterday: 'ትናንት',
       filterWeek: 'ይህ ሳምንት',
       filterMonth: 'ይህ ወር',
+      filterLastMonth: 'ያለፈው ወር',
+      filterCustom: 'የቀን ገደብ',
 
       // ሽያጭ / POS
-      posTitle: 'የሬስቶራንት እና ምርት ሽያጭ',
-      searchProduct: 'ምርት ይፈልጉ...',
+      posTitle: 'የምግብ እና ምርቶች ሽያጭ (POS)',
+      searchProduct: 'ምግብ ፈልግ...',
       cart: 'የሽያጭ ቅርጫት',
-      emptyCart: 'ምንም የተመረጠ ዕቃ የለም',
+      emptyCart: 'ምንም የተመረጠ ምግብ የለም',
       subtotal: 'ንዑስ ድምር',
       discount: 'ቅናሽ',
       grandTotal: 'ጠቅላላ ድምር',
       paymentMethod: 'የክፍያ ዘዴ',
-      payCash: 'ጥሬ ገንዘብ',
-      payTelebirr: 'ቴሌብር',
-      payCbe: 'ንግድ ባንክ',
-      payMixed: 'ድብልቅ ክፍያ',
+      payCash: 'ጥሬ ገንዘብ (Cash)',
+      payTelebirr: 'ቴሌብር (Telebirr)',
+      payCbe: 'ንግድ ባንክ (CBE)',
+      payMixed: 'ድብልቅ ክፍያ (Mixed)',
       payCredit: 'በብድር (Credit)',
       confirmSale: 'ሽያጩን አረጋግጥ',
       selectCustomer: 'ደንበኛ ይምረጡ',
+      registerNewCustomer: '+ አዲስ ደንበኛ መዝግብ',
       receipt: 'ደረሰኝ',
       itemsCount: 'የእቃዎች ብዛት',
 
-      // ክምችት እና ምርቶች
-      productsTitle: 'የምርቶች እና ክምችት መዝገብ',
-      registerProduct: 'አዲስ ምርት መመዝገብ',
-      productNameAm: 'የምርት ስም (አማርኛ)',
-      productNameEn: 'የምርት ስም (እንግሊዝኛ)',
+      // የደንበኛ ዱቤ (Customer Credit & Debts)
+      customerDebtTitle: 'የደንበኞች ዱቤ እና የብድር መቆጣጠሪያ',
+      registerCustomer: '+ አዲስ ደንበኛ መዝግብ',
+      unpaidDebt: 'ቀሪ ያልተከፈለ ዕዳ',
+      totalCreditGiven: 'ጠቅላላ የተበደረው',
+      totalDebtPaid: 'የተከፈለ ዕዳ',
+      settleDebt: 'ዕዳ መቀበያ',
+      debtReceipt: 'የዱቤ ደረሰኝ',
+      paymentReceipt: 'የክፍያ ደረሰኝ',
+      orderedDishes: 'የተወሰዱ ምግቦች ዝርዝር',
+      paymentHistory: 'የክፍያ ታሪክ',
+
+      // እቃ መረከቢያ (Goods Receiving)
+      receivingTitle: 'እቃ መረከቢያ (Goods Receiving)',
+      receiveNewGoods: '+ አዲስ እቃ ተረከብ',
+      selectSupplier: 'አቅራቢ ይምረጡ',
+      orRegisterSupplier: 'ወይም አዲስ አቅራቢ መዝግብ',
+      supplierName: 'የአቅራቢ/ኩባንያ ስም',
+      supplierPhone: 'ስልክ ቁጥር',
+      supplierAddress: 'አድራሻ',
+      supplierNotes: 'ማስታወሻ',
+      receivedProducts: 'የተረከቧቸው ምርቶች',
+      selectProduct: 'ምርት ይምረጡ',
+      quantity: 'መጠን',
+      unitPrice: 'የአንዱ ዋጋ',
+      lineTotal: 'ድምር ዋጋ',
+      addProductRow: '+ ሌላ እቃ ጨምር',
+      totalPurchaseAmount: 'ጠቅላላ የግዢ ዋጋ',
+      paidAmountImmediately: 'ወዲያውኑ የተከፈለ ገንዘብ',
+      unpaidBalanceDebt: 'ያልተከፈለ ዕዳ (ለአቅራቢ የሚገባ)',
+      paymentAccount: 'የተከፈለበት አካውንት',
+      saveReceiving: 'እቃውን ተረከብ',
+
+      // የአቅራቢ ሂሳብ ዝርዝር (Supplier Statement & Ledger)
+      supplierAccountDetails: 'የአቅራቢ ሂሳብ ዝርዝር እና ታሪክ',
+      totalGoodsReceived: 'ጠቅላላ የተረከቡት እቃዎች',
+      totalPurchasesAmount: 'ጠቅላላ የግዢ መጠን',
+      totalPaymentsMade: 'ጠቅላላ የተከፈለው',
+      outstandingBalance: 'ያልተከፈለ ቀሪ ዕዳ',
+      makePayment: '💳 ክፍያ ፈጽም (Make Payment)',
+      allTransactions: 'ሁሉም ግብይቶች',
+      filterPaid: 'ሙሉ የተከፈሉ',
+      filterPartial: 'በከፊል የተከፈሉ',
+      filterUnpaid: 'ያልተከፈሉ',
+      receivingHistory: 'የእቃ ርክክቦች ታሪክ',
+      paymentHistory: 'የክፍያዎች ታሪክ',
+      recordSupplierPayment: 'ለአቅራቢ ክፍያ መመዝገብ',
+      amountToPay: 'የሚከፈለው የገንዘብ መጠን',
+
+      // የምግብ ዝርዝር እና ማዘጋጃ (Food Dishes & Preparation)
+      foodRecipeTitle: 'የምግብ ዝርዝር እና ማዘጋጃ',
+      createNewRecipe: '+ አዲስ ምግብ መዝግብ',
+      foodNameAm: 'የምግብ ስም',
+      foodNameEn: 'የምግብ ስም (እንግሊዝኛ - አማራጭ)',
+      sellingPrice: 'የመሸጫ ዋጋ',
+      recipeIngredients: 'የሚያስፈልጉ ጥሬ ግብዓቶች (ከተመዘገበው ክምችት)',
+      addIngredientRow: '+ ግብዓት ጨምር',
+      costPerServing: 'የአንድ ሰሃን ማዘጋጃ ወጪ',
+      estimatedProfit: 'የሚጠበቅ ትርፍ (በሰሃን)',
+      availableServings: 'በክምችት ማዘጋጀት የሚቻል (ሰሃን)',
+      saveRecipeBtn: 'ምግቡን መዝግብ',
+
+      // ክምችት እና ምርቶች (Inventory & Products)
+      productsTitle: 'የምርቶች እና ጥሬ ዕቃዎች መዝገብ',
+      registerProduct: '+ አዲስ ምርት / ጥሬ ዕቃ',
+      productNameAm: 'የምርት ስም',
+      productNameEn: 'የምርት ስም (እንግሊዝኛ - አማራጭ)',
       category: 'ምድብ',
       unit: 'መለኪያ',
-      sellingPrice: 'የመሸጫ ዋጋ',
-      purchaseCost: 'የግዢ ወጪ',
-      minStock: 'ዝቅተኛ ክምችት',
-      source: 'ምንጭ',
-      farmSource: 'የእርሻ ምርት',
-      externalSource: 'የውጭ ግዢ',
-      restaurantSource: 'የሬስቶራንት ምግብ',
-      hasExpiry: 'የማብቂያ ቀን አለው',
-      openingStock: 'የመክፈቻ ክምችት ማስገቢያ',
-      adjustStock: 'የክምችት ማስተካከያ',
-      stockLocation: 'መጋዘን',
-      farmWarehouse: 'የእርሻ መጋዘን',
-      restaurantStock: 'የሬስቶራንት ክምችት',
-      mainStorage: 'ዋና ማከማቻ',
-      availableQuantity: 'ያለ ክምችት',
+      purchaseCost: 'የአንዱ ግዢ ዋጋ (ETB)',
+      minStock: 'ዝቅተኛ ክምችት ማስጠንቀቂያ መጠን',
+      currentStock: 'አሁን ያለ ክምችት',
+      adjustStock: 'ክምችት ማስተካከያ',
+      stockHistory: 'የክምችት ታሪክ',
 
-      // ግዢ
-      purchasesTitle: 'የውጭ ግዢዎች መዝገብ',
-      recordPurchase: 'አዲስ ግዢ መመዝገብ',
-      supplier: 'አቅራቢ',
-      purchaseDate: 'የተገዛበት ቀን',
-      unitPrice: 'የአንዱ ዋጋ',
-      additionalCost: 'ተጨማሪ ወጪ (ትራንስፖርት)',
-      paidAmount: 'የተከፈለ ገንዘብ',
-      unpaidBalance: 'የቀረ ዕዳ',
+      // ገንዘብ መውጣት (Withdrawals)
+      withdrawalsTitle: 'ገንዘብ መውጣት (Withdrawals)',
+      recordWithdrawal: '+ ገንዘብ መውጣት መዝግብ',
+      recipientName: 'ተቀባይ ሰው',
+      withdrawalReason: 'ምክንያት',
+      withdrawalNote: 'ማስታወሻ፡ ገንዘብ መውጣት (የባለቤት ድርሻ) የስራ ማስኬጃ ወጪ ተደርጎ አይቆጠርም፤ በእጅና በባንክ ያለውን ገንዘብ ብቻ ይቀንሳል።',
+      withdrawalAccountLabel: 'ገንዘቡ የወጣበት ሂሳብ (ጥሬ ገንዘብ፣ ቴሌብር፣ ንግድ ባንክ)',
 
-      // ዝውውር
-      transfersTitle: 'ከእርሻ ወደ ሬስቶራንት ዝውውር',
-      sendTransfer: 'ምርት ወደ ሬስቶራንት ላክ',
-      transferValue: 'የዝውውር ዋጋ',
-      transferStatus: 'ሁኔታ',
-      statusPending: 'በመጠባበቅ ላይ',
-      statusReceived: 'ተቀባይነት አግኝቷል',
-      statusRejected: 'ውድቅ ተደርጓል',
-      receiveTransfer: 'ተቀበል',
-      rejectTransfer: 'ውድቅ አድርግ',
-      transferAccountingNote: 'ማስታወሻ፡ የውስጥ ዝውውር ለተጠቃለለው ድርጅት ውጫዊ ገቢ ወይም ወጪ ሆኖ አይቆጠርም!',
-
-      // እርሻና ወተት
-      farmTitle: 'የእርሻ እና ወተት ምርት ማቀነባበሪያ',
-      recordProduction: 'አዲስ ምርት መመዝገብ',
-      productionDate: 'የተመረተበት ቀን',
-      expiryDate: 'የሚያበቃበት ቀን',
-      batchNumber: 'የባች ቁጥር',
-      productionCost: 'የማምረቻ ወጪ',
-
-      // ወጪ እና መውጣት
-      expensesTitle: 'የስራ ማስኬጃ ወጪዎች',
-      recordExpense: 'አዲስ ወጪ መመዝገብ',
+      // የስራ ማስኬጃ ወጪ (Expenses)
+      expensesTitle: 'የስራ ማስኬጃ ወጪዎች (Operating Expenses)',
+      recordExpense: '+ ወጪ መዝግብ',
       expenseCategory: 'የወጪ ምድብ',
-      department: 'መምሪያ',
       description: 'ማብራሪያ',
-      paymentAccount: 'የተከፈለበት አካውንት',
-      withdrawalsTitle: 'የባለቤት እና የተፈቀዱ መውጣቶች',
-      recordWithdrawal: 'ገንዘብ መውጣት መመዝገብ',
-      recipientName: 'ገንዘቡን የተቀበለው ሰው',
-      withdrawalReason: 'የመውጫ ምክንያት',
-      withdrawalNote: 'ማስታወሻ፡ የባለቤት መውጣት የስራ ማስኬጃ ወጪ ተደርጎ አይቆጠርም፤ የካሽ/ባንክ ሚዛንን ብቻ ነው የሚቀንሰው።',
-
-      // ደንበኞችና አቅራቢዎች
-      contactsTitle: 'ደንበኞች እና አቅራቢዎች',
-      addContact: 'አዲስ እውቂያ መመዝገብ',
-      contactName: 'ስም',
-      contactPhone: 'ስልክ ቁጥር',
-      contactAddress: 'አድራሻ',
-      outstandingDebt: 'ያለበት ዕዳ',
-      settleDebt: 'ዕዳ ማስታረቅ/መክፈል',
-
-      // የምግብ አዘገጃጀት
-      recipesTitle: 'የምግብ አዘገጃጀት እና ግብዓቶች (Recipes)',
-      addRecipe: 'አዲስ ግብዓት አገናኝ',
-      parentMeal: 'የሬስቶራንት ምግብ',
-      rawIngredient: 'ጥሬ ግብዓት',
-      quantityNeeded: 'አስፈላጊ መጠን',
-
-      // ዕለታዊ ሂሳብ መዝጊያ
-      dailyClosingTitle: 'ዕለታዊ ሂሳብ መዝጊያ',
-      systemCash: 'በሲስተም ያለ ጥሬ ገንዘብ',
-      actualCash: 'በእጅ ያለ ትክክለኛ ጥሬ ገንዘብ',
-      cashDifference: 'የገንዘብ ልዩነት',
-      systemCbe: 'በሲስተም ያለ CBE',
-      actualCbe: 'በባንክ ያለ ትክክለኛ CBE',
-      systemTelebirr: 'በሲስተም ያለ ቴሌብር',
-      actualTelebirr: 'በቴሌብር ያለ ትክክለኛ ሂሳብ',
-      discrepancyReason: 'የልዩነት ምክንያት',
-      closeDay: 'የዕለቱን ሂሳብ ዝጋ',
-      reopenDay: 'የተዘጋውን ሂሳብ ዳግም ክፈት',
-      reopenReason: 'ዳግም የመክፈቻ ምክንያት',
-      dayClosedSuccess: 'የዕለቱ ሂሳብ በተሳካ ሁኔታ ተዘግቷል',
-
-      // ሪፖርቶች
-      reportsTitle: 'የፋይናንስና የትርፍ ሪፖርቶች',
-      reportType: 'የሪፖርት ዓይነት',
-      plStatement: 'የትርፍና ኪሳራ መግለጫ (P&L)',
-      productProfitability: 'የምርቶች አትራፊነት',
-      cashFlow: 'የጥሬ ገንዘብ ፍሰት',
-      grossRevenue: 'ጠቅላላ የሽያጭ ገቢ',
-      cogs: 'የተሸጡ ዕቃዎች ወጪ (COGS)',
-      grossProfit: 'ጠቅላላ ትርፍ (Gross Profit)',
-      operatingExpenses: 'የስራ ማስኬጃ ወጪዎች',
-      netProfit: 'የተጣራ ትርፍ (Net Profit)',
-      ownerWithdrawals: 'የባለቤት መውጣት',
-
-      // ተጠቃሚዎች እና መግቢያ
-      loginTitle: 'ወደ ሲስተሙ ይግቡ',
-      username: 'የተጠቃሚ ስም',
-      password: 'የይለፍ ቃል',
-      loginBtn: 'ግባ (Login)',
-      logout: 'ውጣ (Logout)',
-      superAdmin: 'ዋና አስተዳዳሪ',
-      manager: 'ስራ አስኪያጅ',
-      usersTitle: 'የተጠቃሚዎች ቁጥጥር',
-      addUser: 'አዲስ ተጠቃሚ ፍጠር',
-      fullName: 'ሙሉ ስም',
-      role: 'ሚና',
-      permissions: 'የተፈቀዱ ስራዎች',
-      canDiscount: 'የዋጋ ቅናሽ መስጠት',
-      canAdjustStock: 'ክምችት ማስተካከል',
-      canRecordWithdrawal: 'ገንዘብ ማውጣት መመዝገብ',
-      canViewPl: 'የትርፍና ኪሳራ ሪፖርት ማየት',
-      backupTitle: 'የመረጃ ምትኬ (Backup & Export)',
-      exportBackup: 'ዳታ ወደ ውጭ ላክ (Download Backup)',
 
       // አጠቃላይ
       save: 'መዝግብ',
       cancel: 'ሰርዝ',
       close: 'ዝጋ',
-      edit: 'አስተካክል',
-      delete: 'አጥፋ',
+      search: 'ፈልግ...',
       actions: 'እርምጃዎች',
-      loading: 'በመጫን ላይ...',
-      success: 'ተሳክቷል',
-      error: 'ስህተት'
+      date: 'ቀን',
+      time: 'ሰዓት',
+      status: 'ሁኔታ',
+      loginBtn: 'ግባ (Login)',
+      logout: 'ውጣ'
     },
 
     en: {
-      appName: 'Teklu Getachew Cattle Breeding & Dairy Processing Enterprise',
-      shortName: 'Teklu Enterprise',
+      appName: 'Teklu Restaurant',
+      shortName: 'Teklu Restaurant',
       currency: 'ETB',
-
+      
       // Status
       online: 'Online',
       offline: 'Offline',
-      pendingSync: 'Pending Sync',
+      pendingSync: 'Pending',
       syncNow: 'Sync Now',
       syncSuccess: 'All data synchronized successfully',
-
+      
       // Navigation
       navDashboard: 'Dashboard',
-      navSales: 'POS & Sales',
+      navSales: 'Sales (POS)',
+      navReceiving: 'Receiving',
+      navFoodRecipe: 'Food Menu',
       navStock: 'Inventory',
-      navFinance: 'Finance',
+      navCustomerDebts: 'Customer Debts',
+      navWithdrawals: 'Withdrawals',
+      navExpenses: 'Expenses',
+      navSuppliers: 'Suppliers',
       navMore: 'More',
 
       // Dashboard
-      todaySales: "Today's Sales",
-      todayPurchases: "Today's Purchases",
-      todayExpenses: "Today's Expenses",
-      todayWithdrawals: "Today's Withdrawals",
+      dashboardTitle: 'Business Overview Dashboard',
+      todaySales: 'Sales',
+      todayPurchases: 'Purchases',
+      todayExpenses: 'Operating Expenses',
+      todayWithdrawals: 'Withdrawals',
       cashBalance: 'Cash in Hand',
       cbeBalance: 'CBE Bank',
       telebirrBalance: 'Telebirr',
       otherBanksBalance: 'Other Banks',
-      stockValuation: 'Total Stock Value',
-      estimatedGrossProfit: 'Est. Gross Profit',
-      estimatedNetProfit: 'Est. Net Profit',
-      lowStockAlert: 'Low Stock Products',
-      supplierDebt: 'Supplier Debt',
-      customerDebt: 'Customer Receivables',
+      totalLiquid: 'Total Liquid Cash & Bank',
+      financialAccountsBalance: 'Cash & Bank Balances',
+      stockValuation: 'Total Stock Valuation',
+      estimatedGrossProfit: 'Gross Profit (After Food Cost)',
+      estimatedNetProfit: 'Net Profit (After All Expenses)',
+      lowStockAlert: 'Low Stock Alert',
+      supplierDebt: 'Supplier Payable Debt',
+      customerDebt: 'Customer Receivable Debt',
       filterToday: 'Today',
+      filterYesterday: 'Yesterday',
       filterWeek: 'This Week',
       filterMonth: 'This Month',
+      filterLastMonth: 'Last Month',
+      filterCustom: 'Date Range',
 
-      // POS & Sales
-      posTitle: 'Restaurant & Product POS',
-      searchProduct: 'Search products...',
+      // Sales / POS
+      posTitle: 'Food & Products Point of Sale (POS)',
+      searchProduct: 'Search food...',
       cart: 'Sales Cart',
       emptyCart: 'Cart is empty',
       subtotal: 'Subtotal',
@@ -257,152 +240,115 @@ const I18N = {
       payTelebirr: 'Telebirr',
       payCbe: 'CBE Bank',
       payMixed: 'Mixed Payment',
-      payCredit: 'On Credit',
+      payCredit: 'Credit Sale',
       confirmSale: 'Confirm Sale',
       selectCustomer: 'Select Customer',
+      registerNewCustomer: '+ Register New Customer',
       receipt: 'Receipt',
       itemsCount: 'Items Count',
 
+      // Customer Debts
+      customerDebtTitle: 'Customer Credit & Debts Control',
+      registerCustomer: '+ Register New Customer',
+      unpaidDebt: 'Unpaid Remaining Debt',
+      totalCreditGiven: 'Total Borrowed',
+      totalDebtPaid: 'Total Paid',
+      settleDebt: 'Collect Debt Payment',
+      debtReceipt: 'Credit Order Receipt',
+      paymentReceipt: 'Payment Voucher',
+      orderedDishes: 'Ordered Dishes History',
+      paymentHistory: 'Payment History',
+      receipt: 'Receipt',
+      itemsCount: 'Items Count',
+
+      // Goods Receiving
+      receivingTitle: 'Goods Receiving (እቃ መረከቢያ)',
+      receiveNewGoods: '+ Receive Goods',
+      selectSupplier: 'Select Supplier',
+      orRegisterSupplier: 'Or Register New Supplier',
+      supplierName: 'Supplier / Company Name',
+      supplierPhone: 'Phone Number',
+      supplierAddress: 'Address',
+      supplierNotes: 'Notes',
+      receivedProducts: 'Received Products',
+      selectProduct: 'Select Product',
+      quantity: 'Quantity',
+      unitPrice: 'Unit Price',
+      lineTotal: 'Line Total',
+      addProductRow: '+ Add Product Line',
+      totalPurchaseAmount: 'Total Purchase Amount',
+      paidAmountImmediately: 'Paid Immediately',
+      unpaidBalanceDebt: 'Outstanding Balance (Payable)',
+      paymentAccount: 'Payment Account',
+      saveReceiving: 'Save Goods Receipt',
+
+      // Supplier Account Details & Ledger
+      supplierAccountDetails: 'Supplier Account Details & History',
+      totalGoodsReceived: 'Total Goods Received',
+      totalPurchasesAmount: 'Total Purchases Amount',
+      totalPaymentsMade: 'Total Payments Made',
+      outstandingBalance: 'Outstanding Balance',
+      makePayment: '💳 Make Payment',
+      allTransactions: 'All Transactions',
+      filterPaid: 'Paid',
+      filterPartial: 'Partially Paid',
+      filterUnpaid: 'Unpaid',
+      receivingHistory: 'Goods Receiving History',
+      paymentHistory: 'Payment History',
+      recordSupplierPayment: 'Record Payment to Supplier',
+      amountToPay: 'Amount to Pay',
+
+      // Food Creation & Recipes
+      foodRecipeTitle: 'Food Menu & Preparation',
+      createNewRecipe: '+ Add New Dish',
+      foodNameAm: 'Dish Name (Amharic)',
+      foodNameEn: 'Dish Name (English - Optional)',
+      sellingPrice: 'Selling Price',
+      recipeIngredients: 'Required Ingredients (from stock)',
+      addIngredientRow: '+ Add Ingredient',
+      costPerServing: 'Cost per Plate',
+      estimatedProfit: 'Est. Profit per Plate',
+      availableServings: 'Available Plates in Stock',
+      saveRecipeBtn: 'Save Food Dish',
+
       // Inventory & Products
-      productsTitle: 'Products & Inventory',
-      registerProduct: 'Register New Product',
-      productNameAm: 'Name (Amharic)',
-      productNameEn: 'Name (English)',
+      productsTitle: 'Products & Raw Materials Inventory',
+      registerProduct: '+ Register Raw Material / Item',
+      productNameAm: 'Item Name',
+      productNameEn: 'Item Name (English - Optional)',
       category: 'Category',
       unit: 'Unit',
-      sellingPrice: 'Selling Price',
-      purchaseCost: 'Purchase Cost',
-      minStock: 'Min Stock Level',
-      source: 'Source',
-      farmSource: 'Farm Produce',
-      externalSource: 'External Purchase',
-      restaurantSource: 'Restaurant Meal',
-      hasExpiry: 'Has Expiry Date',
-      openingStock: 'Opening Stock Entry',
-      adjustStock: 'Stock Adjustment',
-      stockLocation: 'Warehouse Location',
-      farmWarehouse: 'Farm Warehouse',
-      restaurantStock: 'Restaurant Stock',
-      mainStorage: 'Main Storage',
-      availableQuantity: 'In Stock',
+      purchaseCost: 'Unit Purchase Cost',
+      minStock: 'Min Stock Alert Level',
+      currentStock: 'Current Stock',
+      adjustStock: 'Adjust Stock',
+      stockHistory: 'Stock History',
 
-      // Purchases
-      purchasesTitle: 'External Purchases',
-      recordPurchase: 'Record Purchase',
-      supplier: 'Supplier',
-      purchaseDate: 'Purchase Date',
-      unitPrice: 'Unit Price',
-      additionalCost: 'Additional Cost (Transport)',
-      paidAmount: 'Amount Paid',
-      unpaidBalance: 'Unpaid Balance',
-
-      // Transfers
-      transfersTitle: 'Farm-to-Restaurant Transfers',
-      sendTransfer: 'Send to Restaurant',
-      transferValue: 'Transfer Value',
-      transferStatus: 'Status',
-      statusPending: 'Pending',
-      statusReceived: 'Received',
-      statusRejected: 'Rejected',
-      receiveTransfer: 'Receive',
-      rejectTransfer: 'Reject',
-      transferAccountingNote: 'Accounting Note: Internal transfers are NOT external income or expenses for the consolidated enterprise.',
-
-      // Farm & Dairy
-      farmTitle: 'Farm & Dairy Production',
-      recordProduction: 'Record Production',
-      productionDate: 'Production Date',
-      expiryDate: 'Expiry Date',
-      batchNumber: 'Batch Number',
-      productionCost: 'Production Cost',
-
-      // Expenses & Withdrawals
-      expensesTitle: 'Operating Expenses',
-      recordExpense: 'Record Expense',
-      expenseCategory: 'Expense Category',
-      department: 'Department',
-      description: 'Description',
-      paymentAccount: 'Payment Account',
-      withdrawalsTitle: 'Owner & Authorized Withdrawals',
-      recordWithdrawal: 'Record Withdrawal',
+      // Withdrawals
+      withdrawalsTitle: 'Withdrawals (ገንዘብ መውጣት)',
+      recordWithdrawal: '+ Record Withdrawal',
       recipientName: 'Recipient Name',
       withdrawalReason: 'Reason',
-      withdrawalNote: 'Note: Owner withdrawals reduce cash/bank balance but are NOT operating expenses.',
+      withdrawalNote: 'Note: Withdrawals (Owner draw) are separate from operating expenses; they only reduce cash/bank balance.',
+      withdrawalAccountLabel: 'Account Withdrawn From (Cash, Telebirr, Bank)',
 
-      // Contacts
-      contactsTitle: 'Customers & Suppliers',
-      addContact: 'Add Contact',
-      contactName: 'Name',
-      contactPhone: 'Phone',
-      contactAddress: 'Address',
-      outstandingDebt: 'Outstanding Balance',
-      settleDebt: 'Settle Debt / Payment',
+      // Operating Expenses
+      expensesTitle: 'Operating Expenses',
+      recordExpense: '+ Record Expense',
+      expenseCategory: 'Expense Category',
+      description: 'Description',
 
-      // Recipes
-      recipesTitle: 'Recipes & Ingredients',
-      addRecipe: 'Connect Ingredient',
-      parentMeal: 'Restaurant Meal',
-      rawIngredient: 'Raw Ingredient',
-      quantityNeeded: 'Qty Needed',
-
-      // Daily Closing
-      dailyClosingTitle: 'Daily Closing',
-      systemCash: 'System Cash',
-      actualCash: 'Physical Cash',
-      cashDifference: 'Cash Difference',
-      systemCbe: 'System CBE',
-      actualCbe: 'Actual CBE',
-      systemTelebirr: 'System Telebirr',
-      actualTelebirr: 'Actual Telebirr',
-      discrepancyReason: 'Discrepancy Reason',
-      closeDay: 'Close Day',
-      reopenDay: 'Reopen Closed Day',
-      reopenReason: 'Reopening Reason',
-      dayClosedSuccess: 'Day successfully closed',
-
-      // Reports
-      reportsTitle: 'Financial & Profit Reports',
-      reportType: 'Report Type',
-      plStatement: 'Profit & Loss Statement (P&L)',
-      productProfitability: 'Product Profitability',
-      cashFlow: 'Cash Flow',
-      grossRevenue: 'Gross Revenue',
-      cogs: 'Cost of Goods Sold (COGS)',
-      grossProfit: 'Gross Profit',
-      operatingExpenses: 'Operating Expenses',
-      netProfit: 'Net Profit',
-      ownerWithdrawals: 'Owner Withdrawals',
-
-      // Users & Auth
-      loginTitle: 'Sign In',
-      username: 'Username',
-      password: 'Password',
-      loginBtn: 'Sign In',
-      logout: 'Logout',
-      superAdmin: 'Super Admin',
-      manager: 'Manager',
-      usersTitle: 'User Management',
-      addUser: 'Create User',
-      fullName: 'Full Name',
-      role: 'Role',
-      permissions: 'Permissions',
-      canDiscount: 'Allow Discount',
-      canAdjustStock: 'Allow Stock Adjust',
-      canRecordWithdrawal: 'Allow Withdrawal',
-      canViewPl: 'Allow View P&L',
-      backupTitle: 'Backup & Export',
-      exportBackup: 'Download Backup',
-
-      // Common
+      // General
       save: 'Save',
       cancel: 'Cancel',
       close: 'Close',
-      edit: 'Edit',
-      delete: 'Delete',
+      search: 'Search...',
       actions: 'Actions',
-      loading: 'Loading...',
-      success: 'Success',
-      error: 'Error'
+      date: 'Date',
+      time: 'Time',
+      status: 'Status',
+      loginBtn: 'Login',
+      logout: 'Logout'
     }
   },
 
@@ -411,19 +357,14 @@ const I18N = {
     if (this.translations[lang] && this.translations[lang][key]) {
       return this.translations[lang][key];
     }
-    if (this.translations['en'][key]) {
-      return this.translations['en'][key];
-    }
-    return key;
+    return this.translations['am'][key] || key;
   },
 
   setLang(lang) {
-    if (this.translations[lang]) {
-      this.currentLang = lang;
-      localStorage.setItem('teklu_lang', lang);
-      document.documentElement.lang = lang;
-      this.applyTranslations();
-    }
+    if (lang !== 'am' && lang !== 'en') return;
+    this.currentLang = lang;
+    localStorage.setItem('teklu_lang', lang);
+    this.applyTranslations();
   },
 
   toggleLang() {
@@ -436,14 +377,17 @@ const I18N = {
       el.textContent = this.t(key);
     });
 
-    document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
-      const key = el.getAttribute('data-i18n-placeholder');
+    document.querySelectorAll('[data-i18n-ph]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-ph');
       el.setAttribute('placeholder', this.t(key));
     });
 
-    const langToggleBtn = document.getElementById('btn-lang-toggle');
-    if (langToggleBtn) {
-      langToggleBtn.textContent = this.currentLang === 'am' ? 'EN' : 'አማ';
+    const langBtn = document.getElementById('btn-lang-toggle');
+    if (langBtn) {
+      langBtn.textContent = this.currentLang === 'am' ? 'EN' : 'አማ';
     }
+
+    // የገጹን ርዕስ ማስተካከል
+    document.title = this.t('appName');
   }
 };

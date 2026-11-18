@@ -1,5 +1,6 @@
 <?php
 /**
+ * ተክሉ ምግብ ቤት (Teklu Restaurant Management)
  * ከመስመር ውጭ የተከናወኑ ግብይቶችን ማመሳሰያ API (Offline Sync Engine)
  */
 
@@ -16,10 +17,11 @@ $pdo = get_db_connection();
 
 $data = get_request_data();
 $device_uuid = trim($data['device_uuid'] ?? '');
-$transactions = $data['transactions'] ?? []; // የግብይቶች ወረፋ
+$transactions = $data['transactions'] ?? [];
 
 $synced_uuids = [];
 $errors = [];
+$company_loc_id = 1; // ማዕከላዊ የድርጅት ክምችት
 
 $pdo->beginTransaction();
 try {
@@ -33,12 +35,11 @@ try {
         }
 
         try {
-            // 1. ሽያጭ (Sale)
+            // 1. ሽያጭ (Sale Sync)
             if ($tx_type === 'sale') {
                 $stmtCheck = $pdo->prepare("SELECT id FROM sales WHERE uuid = :uuid");
                 $stmtCheck->execute([':uuid' => $tx_uuid]);
                 if (!$stmtCheck->fetch()) {
-                    // አዲስ ሽያጭ ማስገባት
                     $receipt_num = $payload['receipt_number'] ?? ('REC-' . date('Ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 5)));
                     $stmtSale = $pdo->prepare("
                         INSERT INTO sales (uuid, receipt_number, sale_date, customer_id, subtotal, discount, grand_total, payment_status, status, created_by, created_at)
@@ -57,12 +58,18 @@ try {
                     ]);
                     $sale_id = (int)$pdo->lastInsertId();
 
-                    // እቃዎች
-                    $stmtRestLoc = $pdo->query("SELECT id FROM stock_locations WHERE code = 'restaurant_stock' LIMIT 1");
-                    $restaurant_loc_id = (int)($stmtRestLoc->fetchColumn() ?: 2);
+                    // ሬሲፒዎችን መመርመር
+                    $stmtAllRecipes = $pdo->query("SELECT * FROM recipes");
+                    $recipesByParent = [];
+                    foreach ($stmtAllRecipes->fetchAll() as $rc) {
+                        $recipesByParent[$rc['parent_product_id']][] = $rc;
+                    }
 
                     foreach ($payload['items'] as $it) {
                         $it_uuid = bin2hex(random_bytes(16));
+                        $pid = (int)$it['product_id'];
+                        $qty = (float)$it['quantity'];
+
                         $stmtItem = $pdo->prepare("
                             INSERT INTO sale_items (uuid, sale_id, product_id, quantity, unit_price, total_price, unit_cost)
                             VALUES (:uuid, :sale_id, :prod_id, :qty, :u_price, :tot, :u_cost)
@@ -70,63 +77,96 @@ try {
                         $stmtItem->execute([
                             ':uuid'    => $it_uuid,
                             ':sale_id' => $sale_id,
-                            ':prod_id' => $it['product_id'],
-                            ':qty'     => $it['quantity'],
+                            ':prod_id' => $pid,
+                            ':qty'     => $qty,
                             ':u_price' => $it['unit_price'],
                             ':tot'     => $it['total_price'],
                             ':u_cost'  => $it['unit_cost'] ?? 0.0
                         ]);
 
-                        // ክምችት መቀነስ
-                        record_stock_movement(
-                            $pdo,
-                            (int)$it['product_id'],
-                            'sale',
-                            (float)$it['quantity'],
-                            $restaurant_loc_id,
-                            null,
-                            (float)($it['unit_cost'] ?? 0.0),
-                            $tx_uuid,
-                            'የተመሳሰለ ሽያጭ #' . $receipt_num,
-                            $user['id']
-                        );
+                        if (isset($recipesByParent[$pid])) {
+                            foreach ($recipesByParent[$pid] as $ingredient) {
+                                $ing_qty = round((float)$ingredient['quantity_needed'] * $qty, 3);
+                                record_stock_movement(
+                                    $pdo,
+                                    (int)$ingredient['ingredient_product_id'],
+                                    'sale',
+                                    $ing_qty,
+                                    $company_loc_id,
+                                    null,
+                                    0.00,
+                                    $tx_uuid,
+                                    'የተመሳሰለ ሽያጭ ግብዓት ቅነሳ #' . $receipt_num,
+                                    $user['id']
+                                );
+                            }
+                        } else {
+                            record_stock_movement(
+                                $pdo,
+                                $pid,
+                                'sale',
+                                $qty,
+                                $company_loc_id,
+                                null,
+                                (float)($it['unit_cost'] ?? 0.0),
+                                $tx_uuid,
+                                'የተመሳሰለ ቀጥታ ሽያጭ #' . $receipt_num,
+                                $user['id']
+                            );
+                        }
                     }
 
                     // ክፍያዎች
-                    foreach ($payload['payments'] as $pay) {
-                        record_payment(
-                            $pdo,
-                            'sale',
-                            $tx_uuid,
-                            (int)$pay['account_id'],
-                            (float)$pay['amount'],
-                            $payload['sale_date'] ?? date('Y-m-d H:i:s'),
-                            'የተመሳሰለ ሽያጭ ክፍያ #' . $receipt_num,
-                            $user['id'],
-                            true
-                        );
+                    if (!empty($payload['payments']) && is_array($payload['payments'])) {
+                        foreach ($payload['payments'] as $pay) {
+                            $pay_amt = (float)($pay['amount'] ?? 0);
+                            $acc_id = (int)($pay['account_id'] ?? 0);
+                            if ($pay_amt > 0 && $acc_id > 0) {
+                                record_payment(
+                                    $pdo,
+                                    'sale',
+                                    $tx_uuid,
+                                    $acc_id,
+                                    $pay_amt,
+                                    $payload['sale_date'] ?? date('Y-m-d H:i:s'),
+                                    'የተመሳሰለ ሽያጭ ክፍያ #' . $receipt_num,
+                                    $user['id'],
+                                    true
+                                );
+                            }
+                        }
+                    }
+
+                    // የደንበኛ እዳ ካለ
+                    $unpaid = (float)($payload['unpaid_balance'] ?? 0.0);
+                    if ($unpaid > 0 && !empty($payload['customer_id'])) {
+                        $pdo->prepare("UPDATE contacts SET outstanding_balance = outstanding_balance + :amt WHERE id = :cid")
+                            ->execute([':amt' => $unpaid, ':cid' => (int)$payload['customer_id']]);
                     }
                 }
                 $synced_uuids[] = $tx_uuid;
             }
 
-            // 2. ግዢ (Purchase)
+            // 2. እቃ መረከቢያ (Goods Receiving / Purchase Sync)
             elseif ($tx_type === 'purchase') {
                 $stmtCheck = $pdo->prepare("SELECT id FROM purchases WHERE uuid = :uuid");
                 $stmtCheck->execute([':uuid' => $tx_uuid]);
                 if (!$stmtCheck->fetch()) {
                     $stmtPur = $pdo->prepare("
-                        INSERT INTO purchases (uuid, supplier_id, purchase_date, total_amount, additional_cost, grand_total, payment_status, notes, created_by, created_at)
-                        VALUES (:uuid, :sup_id, :pdate, :tot, :add_cost, :grand, :p_status, :notes, :created_by, NOW())
+                        INSERT INTO purchases (uuid, supplier_id, purchase_date, total_amount, additional_cost, grand_total, paid_amount, unpaid_balance, payment_status, payment_account_id, notes, created_by, created_at)
+                        VALUES (:uuid, :sup_id, :pdate, :tot, :add_cost, :grand, :paid, :unpaid, :p_status, :acc_id, :notes, :created_by, NOW())
                     ");
                     $stmtPur->execute([
                         ':uuid'       => $tx_uuid,
                         ':sup_id'     => $payload['supplier_id'] ?? null,
-                        ':pdate'      => $payload['purchase_date'] ?? date('Y-m-d'),
+                        ':pdate'      => $payload['purchase_date'] ?? date('Y-m-d H:i:s'),
                         ':tot'        => $payload['total_amount'] ?? 0.0,
                         ':add_cost'   => $payload['additional_cost'] ?? 0.0,
                         ':grand'      => $payload['grand_total'] ?? 0.0,
+                        ':paid'       => $payload['paid_amount'] ?? 0.0,
+                        ':unpaid'     => $payload['unpaid_balance'] ?? 0.0,
                         ':p_status'   => $payload['payment_status'] ?? 'paid',
+                        ':acc_id'     => $payload['payment_account_id'] ?? null,
                         ':notes'      => $payload['notes'] ?? '',
                         ':created_by' => $user['id']
                     ]);
@@ -142,7 +182,7 @@ try {
                             ':uuid'    => $it_uuid,
                             ':p_id'    => $purchase_id,
                             ':prod_id' => $it['product_id'],
-                            ':loc_id'  => $it['location_id'] ?? 1,
+                            ':loc_id'  => $company_loc_id,
                             ':qty'     => $it['quantity'],
                             ':unit'    => $it['unit'] ?? 'piece',
                             ':u_price' => $it['unit_price'],
@@ -156,48 +196,90 @@ try {
                             'purchase',
                             (float)$it['quantity'],
                             null,
-                            (int)($it['location_id'] ?? 1),
+                            $company_loc_id,
                             (float)$it['unit_price'],
                             $tx_uuid,
-                            'የተመሳሰለ ግዢ',
+                            'የተመሳሰለ እቃ ርክክብ',
                             $user['id']
                         );
                         update_weighted_average_cost($pdo, (int)$it['product_id'], (float)$it['quantity'], (float)$it['unit_price']);
                     }
 
-                    foreach ($payload['payments'] as $pay) {
+                    $paid = (float)($payload['paid_amount'] ?? 0.0);
+                    $acc_id = (int)($payload['payment_account_id'] ?? 0);
+                    if ($paid > 0 && $acc_id > 0) {
                         record_payment(
                             $pdo,
                             'purchase',
                             $tx_uuid,
-                            (int)$pay['account_id'],
-                            (float)$pay['amount'],
-                            $payload['purchase_date'] ?? date('Y-m-d'),
-                            'የተመሳሰለ ግዢ ክፍያ',
+                            $acc_id,
+                            $paid,
+                            $payload['purchase_date'] ?? date('Y-m-d H:i:s'),
+                            'የተመሳሰለ እቃ ርክክብ ክፍያ',
                             $user['id'],
                             false
                         );
+                    }
+
+                    // የአቅራቢ እዳ
+                    $unpaid = (float)($payload['unpaid_balance'] ?? 0.0);
+                    if ($unpaid > 0 && !empty($payload['supplier_id'])) {
+                        $pdo->prepare("UPDATE contacts SET outstanding_balance = outstanding_balance + :bal WHERE id = :sid")
+                            ->execute([':bal' => $unpaid, ':sid' => (int)$payload['supplier_id']]);
                     }
                 }
                 $synced_uuids[] = $tx_uuid;
             }
 
-            // 3. ወጪ (Expense)
+            // 3. ለአቅራቢ የተፈጸመ ክፍያ (Supplier Debt Payment Sync)
+            elseif ($tx_type === 'supplier_payment') {
+                $stmtCheck = $pdo->prepare("SELECT id FROM payments WHERE reference_id = :ref");
+                $stmtCheck->execute([':ref' => $tx_uuid]);
+                if (!$stmtCheck->fetch()) {
+                    $sup_id = (int)($payload['supplier_id'] ?? 0);
+                    $acc_id = (int)($payload['account_id'] ?? 0);
+                    $amt = (float)($payload['amount'] ?? 0.0);
+                    $pdate = $payload['payment_date'] ?? date('Y-m-d H:i:s');
+                    $notes = trim($payload['notes'] ?? '');
+
+                    if ($sup_id > 0 && $acc_id > 0 && $amt > 0) {
+                        record_payment(
+                            $pdo,
+                            'supplier_debt_settlement',
+                            $tx_uuid,
+                            $acc_id,
+                            $amt,
+                            $pdate,
+                            'የተመሳሰለ ለአቅራቢ የተከፈለ ዕዳ: ' . $notes,
+                            $user['id'],
+                            false
+                        );
+
+                        $pdo->prepare("
+                            UPDATE contacts
+                            SET outstanding_balance = GREATEST(0, outstanding_balance - :amt), updated_at = NOW()
+                            WHERE id = :sid
+                        ")->execute([':amt' => $amt, ':sid' => $sup_id]);
+                    }
+                }
+                $synced_uuids[] = $tx_uuid;
+            }
+
+            // 4. የስራ ማስኬጃ ወጪ (Operating Expense Sync)
             elseif ($tx_type === 'expense') {
                 $stmtCheck = $pdo->prepare("SELECT id FROM expenses WHERE uuid = :uuid");
                 $stmtCheck->execute([':uuid' => $tx_uuid]);
                 if (!$stmtCheck->fetch()) {
                     $stmtExp = $pdo->prepare("
                         INSERT INTO expenses (uuid, category_id, account_id, amount, expense_date, department, description, created_by, created_at)
-                        VALUES (:uuid, :cat_id, :acc_id, :amt, :edate, :dept, :desc, :created_by, NOW())
+                        VALUES (:uuid, :cat_id, :acc_id, :amt, :edate, 'general', :desc, :created_by, NOW())
                     ");
                     $stmtExp->execute([
                         ':uuid'       => $tx_uuid,
                         ':cat_id'     => $payload['category_id'],
                         ':acc_id'     => $payload['account_id'],
                         ':amt'        => $payload['amount'],
-                        ':edate'      => $payload['expense_date'] ?? date('Y-m-d'),
-                        ':dept'       => $payload['department'] ?? 'general',
+                        ':edate'      => $payload['expense_date'] ?? date('Y-m-d H:i:s'),
                         ':desc'       => $payload['description'] ?? '',
                         ':created_by' => $user['id']
                     ]);
@@ -207,7 +289,7 @@ try {
                         $tx_uuid,
                         (int)$payload['account_id'],
                         (float)$payload['amount'],
-                        $payload['expense_date'] ?? date('Y-m-d'),
+                        $payload['expense_date'] ?? date('Y-m-d H:i:s'),
                         'የተመሳሰለ ወጪ: ' . ($payload['description'] ?? ''),
                         $user['id'],
                         false
@@ -216,22 +298,23 @@ try {
                 $synced_uuids[] = $tx_uuid;
             }
 
-            // 4. መውጣት (Withdrawal)
+            // 5. ገንዘብ መውጣት (Withdrawal Sync)
             elseif ($tx_type === 'withdrawal') {
                 $stmtCheck = $pdo->prepare("SELECT id FROM withdrawals WHERE uuid = :uuid");
                 $stmtCheck->execute([':uuid' => $tx_uuid]);
                 if (!$stmtCheck->fetch()) {
                     $stmtWth = $pdo->prepare("
-                        INSERT INTO withdrawals (uuid, account_id, amount, withdrawal_date, reason, recipient_name, created_by, created_at)
-                        VALUES (:uuid, :acc_id, :amt, :wdate, :reason, :rec, :created_by, NOW())
+                        INSERT INTO withdrawals (uuid, account_id, amount, withdrawal_date, reason, recipient_name, notes, created_by, created_at)
+                        VALUES (:uuid, :acc_id, :amt, :wdate, :reason, :rec, :notes, :created_by, NOW())
                     ");
                     $stmtWth->execute([
                         ':uuid'       => $tx_uuid,
                         ':acc_id'     => $payload['account_id'],
                         ':amt'        => $payload['amount'],
-                        ':wdate'      => $payload['withdrawal_date'] ?? date('Y-m-d'),
+                        ':wdate'      => $payload['withdrawal_date'] ?? date('Y-m-d H:i:s'),
                         ':reason'     => $payload['reason'] ?? '',
                         ':rec'        => $payload['recipient_name'] ?? '',
+                        ':notes'      => $payload['notes'] ?? '',
                         ':created_by' => $user['id']
                     ]);
                     record_payment(
@@ -240,8 +323,8 @@ try {
                         $tx_uuid,
                         (int)$payload['account_id'],
                         (float)$payload['amount'],
-                        $payload['withdrawal_date'] ?? date('Y-m-d'),
-                        'የተመሳሰለ ገንዘብ መውጣት',
+                        $payload['withdrawal_date'] ?? date('Y-m-d H:i:s'),
+                        'የተመሳሰለ ገንዘብ መውጣት ለ ' . ($payload['recipient_name'] ?? ''),
                         $user['id'],
                         false
                     );
@@ -249,39 +332,52 @@ try {
                 $synced_uuids[] = $tx_uuid;
             }
 
-            // 5. የእርሻ ምርት (Farm Production)
-            elseif ($tx_type === 'production') {
-                $stmtCheck = $pdo->prepare("SELECT id FROM farm_productions WHERE uuid = :uuid");
-                $stmtCheck->execute([':uuid' => $tx_uuid]);
+            // 6. የደንበኛ ዕዳ ክፍያ (Customer Credit Settlement Sync)
+            elseif ($tx_type === 'customer_settlement' || $tx_type === 'customer_debt_settlement') {
+                $stmtCheck = $pdo->prepare("SELECT id FROM payments WHERE reference_id = :ref");
+                $stmtCheck->execute([':ref' => $tx_uuid]);
                 if (!$stmtCheck->fetch()) {
-                    $stmtFp = $pdo->prepare("
-                        INSERT INTO farm_productions (uuid, product_id, quantity, unit, production_cost, production_date, expiry_date, batch_number, destination_location_id, created_by, created_at)
-                        VALUES (:uuid, :prod_id, :qty, :unit, :cost, :pdate, :exp, :batch, :dest_loc, :created_by, NOW())
-                    ");
-                    $stmtFp->execute([
-                        ':uuid'       => $tx_uuid,
-                        ':prod_id'    => $payload['product_id'],
-                        ':qty'        => $payload['quantity'],
-                        ':unit'       => $payload['unit'] ?? 'liter',
-                        ':cost'       => $payload['production_cost'] ?? 0.0,
-                        ':pdate'      => $payload['production_date'] ?? date('Y-m-d'),
-                        ':exp'        => $payload['expiry_date'] ?? null,
-                        ':batch'      => $payload['batch_number'] ?? '',
-                        ':dest_loc'   => $payload['destination_location_id'] ?? 1,
-                        ':created_by' => $user['id']
-                    ]);
-                    record_stock_movement(
-                        $pdo,
-                        (int)$payload['product_id'],
-                        'production',
-                        (float)$payload['quantity'],
-                        null,
-                        (int)($payload['destination_location_id'] ?? 1),
-                        (float)($payload['production_cost'] ?? 0.0),
-                        $tx_uuid,
-                        'የተመሳሰለ የእርሻ ምርት',
-                        $user['id']
-                    );
+                    $cid = (int)($payload['customer_id'] ?? $payload['contact_id'] ?? 0);
+                    $acc_id = (int)($payload['account_id'] ?? 0);
+                    $amt = (float)($payload['amount'] ?? 0.0);
+                    $pdate = $payload['payment_date'] ?? date('Y-m-d H:i:s');
+                    $notes = trim($payload['notes'] ?? '');
+
+                    if ($cid > 0 && $acc_id > 0 && $amt > 0) {
+                        record_payment(
+                            $pdo,
+                            'customer_credit_settlement',
+                            $tx_uuid,
+                            $acc_id,
+                            $amt,
+                            $pdate,
+                            'የተመሳሰለ የደንበኛ ዕዳ ክፍያ: ' . $notes,
+                            $user['id'],
+                            true
+                        );
+
+                        $pdo->prepare("
+                            UPDATE contacts
+                            SET outstanding_balance = GREATEST(0, outstanding_balance - :amt), updated_at = NOW()
+                            WHERE id = :cid
+                        ")->execute([':amt' => $amt, ':cid' => $cid]);
+                    }
+                }
+                $synced_uuids[] = $tx_uuid;
+            }
+
+            // 7. አዲስ ደንበኛ መመዝገብ (Customer Creation Sync)
+            elseif ($tx_type === 'create_customer') {
+                $name = trim($payload['name'] ?? '');
+                $phone = trim($payload['phone'] ?? '');
+                $address = trim($payload['address'] ?? '');
+                if (!empty($name)) {
+                    $stmtCheck = $pdo->prepare("SELECT id FROM contacts WHERE name = :name AND type = 'customer'");
+                    $stmtCheck->execute([':name' => $name]);
+                    if (!$stmtCheck->fetch()) {
+                        $pdo->prepare("INSERT INTO contacts (uuid, type, name, phone, address, outstanding_balance, created_at) VALUES (:uuid, 'customer', :name, :phone, :addr, 0, NOW())")
+                            ->execute([':uuid' => $tx_uuid, ':name' => $name, ':phone' => $phone, ':addr' => $address]);
+                    }
                 }
                 $synced_uuids[] = $tx_uuid;
             }
@@ -290,7 +386,6 @@ try {
         }
     }
 
-    // የመሳሪያውን የመጨረሻ የማመሳሰል ጊዜ ማደስ
     if (!empty($device_uuid)) {
         $pdo->prepare("UPDATE devices SET last_sync_at = NOW() WHERE device_uuid = :duuid")->execute([':duuid' => $device_uuid]);
     }
@@ -301,7 +396,7 @@ try {
     send_error('ማመሳሰል አልተሳካም: ' . $e->getMessage());
 }
 
-// ወቅታዊ የሆኑ አዳዲስ መረጃዎችን (Delta updates) ለስልኩ መመለስ
+// ወቅታዊ መረጃዎችን ማምጣት
 $latest_products = $pdo->query("
     SELECT p.*, COALESCE(SUM(sl.quantity), 0) as total_stock
     FROM products p
@@ -310,16 +405,16 @@ $latest_products = $pdo->query("
     GROUP BY p.id
 ")->fetchAll();
 
-$latest_stock_levels = $pdo->query("SELECT * FROM stock_levels")->fetchAll();
 $latest_accounts = $pdo->query("SELECT * FROM financial_accounts WHERE is_active = 1")->fetchAll();
+$latest_contacts = $pdo->query("SELECT * FROM contacts")->fetchAll();
 
 send_success('የማመሳሰል ሂደት ተጠናቋል', [
     'synced_uuids' => $synced_uuids,
     'errors'       => $errors,
     'server_state' => [
-        'products'     => $latest_products,
-        'stock_levels' => $latest_stock_levels,
-        'accounts'     => $latest_accounts,
-        'synced_at'    => date('Y-m-d H:i:s')
+        'products'  => $latest_products,
+        'accounts'  => $latest_accounts,
+        'contacts'  => $latest_contacts,
+        'synced_at' => date('Y-m-d H:i:s')
     ]
 ]);
