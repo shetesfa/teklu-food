@@ -44,7 +44,7 @@ if ($action === 'list') {
         $params[':srch'] = '%' . $search . '%';
     }
 
-    $sql .= " GROUP BY p.id";
+    $sql .= " GROUP BY p.id, c.id, c.name_en, c.name_am";
 
     if ($low_stock_only) {
         $sql .= " HAVING total_stock <= p.min_stock_level AND p.min_stock_level > 0";

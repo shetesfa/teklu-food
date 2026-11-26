@@ -58,7 +58,7 @@ if ($type === 'pl') {
         FROM expenses e
         JOIN categories c ON e.category_id = c.id
         WHERE DATE(e.expense_date) BETWEEN :start_d AND :end_d
-        GROUP BY e.category_id
+        GROUP BY e.category_id, c.id, c.name_am
         ORDER BY total_amount DESC
     ");
     $stmtExp->execute([':start_d' => $start_date, ':end_d' => $end_date]);
@@ -139,7 +139,7 @@ if ($type === 'cashflow') {
         JOIN financial_accounts fa ON p.account_id = fa.id
         WHERE DATE(p.payment_date) BETWEEN :start_d AND :end_d
           AND p.transaction_type IN ('sale', 'customer_credit_settlement')
-        GROUP BY p.transaction_type, p.account_id
+        GROUP BY p.transaction_type, p.account_id, fa.id, fa.name_am
     ");
     $stmtIn->execute([':start_d' => $start_date, ':end_d' => $end_date]);
     $inflows = $stmtIn->fetchAll();
@@ -150,7 +150,7 @@ if ($type === 'cashflow') {
         JOIN financial_accounts fa ON p.account_id = fa.id
         WHERE DATE(p.payment_date) BETWEEN :start_d AND :end_d
           AND p.transaction_type IN ('purchase', 'expense', 'withdrawal', 'supplier_debt_settlement')
-        GROUP BY p.transaction_type, p.account_id
+        GROUP BY p.transaction_type, p.account_id, fa.id, fa.name_am
     ");
     $stmtOut->execute([':start_d' => $start_date, ':end_d' => $end_date]);
     $outflows = $stmtOut->fetchAll();
