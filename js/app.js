@@ -2422,6 +2422,40 @@ function hideSubModules() {
   document.querySelectorAll('.sub-module').forEach((sm) => sm.style.display = 'none');
 }
 
+// የመረጃ ምትኬ ማውረድ (Download Backup): the endpoint is Bearer-only auth,
+// so a plain <a href> navigation sends no Authorization header and the
+// server answers 401 (verified live). Fetch with the token via API.request
+// (same auth as every other call) and trigger a blob download of the JSON.
+async function downloadBackup() {
+  const btn = document.getElementById('btn-export-backup');
+  const originalLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ እያወረደ ነው...'; }
+  try {
+    const res = await API.request('backup.php?action=export_json');
+    if (!res || res.success === false) {
+      alert(res && res.error ? res.error : 'ምትኬውን ማውረድ አልተሳካም');
+      return;
+    }
+    const now = new Date();
+    const stamp = now.getFullYear()
+      + String(now.getMonth() + 1).padStart(2, '0')
+      + String(now.getDate()).padStart(2, '0');
+    const blob = new Blob([JSON.stringify(res, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'teklu-backup-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (err) {
+    alert('ስህተት: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+  }
+}
+
 async function loadUsers() {
   try {
     const res = await API.request('auth.php?action=users');
