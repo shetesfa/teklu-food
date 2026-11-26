@@ -257,8 +257,9 @@ if ($action === 'customer_statement') {
     ]);
 }
 
-// 3. ለአቅራቢ የተናጠል ክፍያ መፈጸም (Make Payment against Supplier Account)
+// 3. ለአቅራቢ የተናጠል ክፍያ መፈጸም (Make Payment against Supplier Account) — Admin ብቻ
 if ($action === 'make_payment') {
+    require_admin($user);
     $data = get_request_data();
     $supplier_id = (int)($data['supplier_id'] ?? 0);
     $account_id = (int)($data['account_id'] ?? 0);
@@ -337,8 +338,11 @@ if ($action === 'make_payment') {
     }
 }
 
-// 4. አዲስ እውቂያ መመዝገብ
+// 4. አዲስ እውቂያ መመዝገብ — Admin ብቻ (admin_worker ማየት ብቻ ነው)
 if ($action === 'create') {
+    if (!check_permission($user, 'contacts_manage')) {
+        send_error('አቅራቢ ወይም ደንበኛ ለመመዝገብ ፈቃድ የለዎትም', 403);
+    }
     $data = get_request_data();
     $name = trim($data['name'] ?? '');
     $type = $data['type'] ?? 'supplier';
@@ -370,8 +374,9 @@ if ($action === 'create') {
     send_success('እውቂያው በተሳካ ሁኔታ ተመዝግቧል', ['contact_id' => $new_id, 'uuid' => $uuid], 201);
 }
 
-// 5. የደንበኛ ዕዳ ክፍያ (Customer Credit Settlement)
+// 5. የደንበኛ ዕዳ ክፍያ (Customer Credit Settlement) — Admin ብቻ
 if ($action === 'settle_debt') {
+    require_admin($user);
     $data = get_request_data();
     $contact_id = (int)($data['contact_id'] ?? 0);
     $account_id = (int)($data['account_id'] ?? 0);

@@ -37,6 +37,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+// የአሁኑ ተጠቃሚ role — 'manager' የሚለው አሮጌ role ወደ 'admin' ይቀየራል
+// (migration 002: manager → admin; የድሮ cached session እስኪያልቅ ድረስ)
+function currentRole() {
+  const r = (API.user && API.user.role) || 'worker';
+  return r === 'manager' ? 'admin' : r;
+}
+
 function initAppLayout() {
   document.getElementById('login-screen').classList.remove('active');
   const user = API.user;
@@ -45,11 +52,22 @@ function initAppLayout() {
     if (titleEl) {
       titleEl.textContent = `ተክሉ ቢዝነስ (${user.full_name.split(' ')[0]})`;
     }
-    // የፈቃድ ገደቦች
-    if (user.role !== 'super_admin') {
-      const userMgmtBtn = document.getElementById('btn-users-management');
-      if (userMgmtBtn) userMgmtBtn.style.display = 'none';
-    }
+    // የፈቃድ ገደቦች — በ role (super_admin > admin > admin_worker > worker)
+    const role = currentRole();
+    const isSuperAdmin = role === 'super_admin';
+    const isAdmin = isSuperAdmin || role === 'admin';
+    const isAdminWorker = isAdmin || role === 'admin_worker';
+    const hideEl = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+    // የተጠቃሚዎች ቁጥጥር: super_admin + admin ብቻ
+    if (!isAdmin) hideEl('btn-users-management');
+    // ሪፖርቶች + ዕለታዊ መዝጊያ: super_admin + admin ብቻ
+    if (!isAdmin) { hideEl('btn-reports-menu'); hideEl('btn-closing-menu'); }
+    // ደንበኞች: worker አይችልም (admin_worker ማየት ይችላል)
+    if (!isAdminWorker) hideEl('btn-customers-menu');
+    // ምትኬ: super_admin ብቻ
+    if (!isSuperAdmin) hideEl('btn-backup-menu');
+    // worker ምንም የተጨማሪ ሞጁል ስለሌለው የ"ተጨማሪ" አሰሳውን ሙሉ በሙሉ ደብቅ
+    if (!isAdminWorker) hideEl('nav-more');
   }
 
   // የመነሻ ዳታዎችን መጫን
@@ -2399,6 +2417,21 @@ function showPaymentVoucherModal(payment, customerName) {
 // 14. ተጠቃሚዎች እና ተጨማሪ ሞጁሎች (Users, Closing, Reports)
 // =========================================================================
 function showSubModule(subId) {
+  // የ role ጥበቃ — የተደበቀ አዝራር ቢጫን ወይም በቀጥታ ቢጠራ እንኳ መክፈት አይፈቀድም
+  const role = currentRole();
+  const isSuperAdmin = role === 'super_admin';
+  const isAdmin = isSuperAdmin || role === 'admin';
+  const isAdminWorker = isAdmin || role === 'admin_worker';
+  const allowed =
+    (subId === 'sub-users' && isAdmin) ||
+    (subId === 'sub-reports' && isAdmin) ||
+    (subId === 'sub-closing' && isAdmin) ||
+    (subId === 'sub-customers' && isAdminWorker) ||
+    (subId === 'sub-backup' && isSuperAdmin);
+  if (!allowed) {
+    alert('ይህን ሞጁል ለመክፈት ፈቃድ የለዎትም');
+    return;
+  }
   document.querySelectorAll('.sub-module').forEach((sm) => sm.style.display = 'none');
   const target = document.getElementById(subId);
   if (target) {

@@ -398,8 +398,9 @@ if ($action === 'create') {
     }
 }
 
-// 3. ሽያጭ መሰረዝ/መቀልበስ (Cancel or Refund Sale)
+// 3. ሽያጭ መሰረዝ/መቀልበስ (Cancel or Refund Sale) — Admin ብቻ
 if ($action === 'cancel') {
+    require_admin($user);
     $data = get_request_data();
     $sale_id = (int)($data['sale_id'] ?? 0);
     $reason = trim($data['reason'] ?? 'የሽያጭ ስረዛ / ተመላሽ');

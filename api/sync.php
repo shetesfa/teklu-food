@@ -34,6 +34,23 @@ try {
             continue;
         }
 
+        // ከመስመር ውጭ የተቀመጠ ግብይት የዚህ ተጠቃሚ role የሚፈቅደው መሆን አለበት፤
+        // ካልሆነ እንደ ስህተት ይመዘገባል (የአካባቢው ረድፍ ይቀራል፣ server ላይ አይገባም)
+        $syncPermissions = [
+            'create_recipe'       => 'food_manage',
+            'purchase'            => 'receiving',
+            'supplier_payment'    => 'receiving',
+            'expense'             => 'expenses_add',
+            'withdrawal'          => 'withdrawals',
+            'customer_settlement' => 'contacts_manage',
+            'customer_debt_settlement' => 'contacts_manage',
+            'create_customer'     => 'contacts_manage',
+        ];
+        if (isset($syncPermissions[$tx_type]) && !check_permission($user, $syncPermissions[$tx_type])) {
+            $errors[] = ['uuid' => $tx_uuid, 'error' => 'ይህን ግብይት ለማመሳሰል ፈቃድ የለዎትም (' . $tx_type . ')'];
+            continue;
+        }
+
         try {
             // 1. ሽያጭ (Sale Sync)
             if ($tx_type === 'sale') {

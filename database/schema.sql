@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
-    role ENUM('super_admin', 'manager') NOT NULL,
+    role ENUM('super_admin', 'admin', 'admin_worker', 'worker') NOT NULL,
     permissions JSON NULL,
     is_active TINYINT(1) DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

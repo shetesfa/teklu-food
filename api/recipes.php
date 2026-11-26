@@ -116,8 +116,11 @@ if ($action === 'list') {
     ]);
 }
 
-// 2. አዲስ ምግብ መፍጠር ወይም ማደስ (Save Food Dish)
+// 2. አዲስ ምግብ መፍጠር ወይም ማደስ (Save Food Dish) — worker አይችልም
 if ($action === 'save_recipe') {
+    if (!check_permission($user, 'food_manage')) {
+        send_error('ምግብ ለመፍጠር ወይም ለማስተካከል ፈቃድ የለዎትም', 403);
+    }
     $data = get_request_data();
     $food_id = !empty($data['food_id']) ? (int)$data['food_id'] : 0;
     $name_am = trim($data['name_am'] ?? '');
@@ -247,8 +250,11 @@ if ($action === 'save_recipe') {
     }
 }
 
-// 3. ሬሲፒ መሰረዝ
+// 3. ሬሲፒ መሰረዝ — worker አይችልም
 if ($action === 'delete') {
+    if (!check_permission($user, 'food_manage')) {
+        send_error('ምግብ ለመሰረዝ ፈቃድ የለዎትም', 403);
+    }
     $data = get_request_data();
     $food_id = (int)($data['food_id'] ?? 0);
     if ($food_id > 0) {

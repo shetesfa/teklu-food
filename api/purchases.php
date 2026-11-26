@@ -89,8 +89,11 @@ if ($action === 'list') {
     send_success('የርክክቦች ዝርዝር', ['purchases' => $purchases]);
 }
 
-// 2. አዲስ እቃ መረከቢያ መመዝገብ (Receive Goods from Supplier)
+// 2. አዲስ እቃ መረከቢያ መመዝገብ (Receive Goods from Supplier) — worker አይችልም
 if ($action === 'create') {
+    if (!check_permission($user, 'receiving')) {
+        send_error('እቃ ለመረከብ ፈቃድ የለዎትም', 403);
+    }
     $data = get_request_data();
     $uuid = $data['uuid'] ?? ('pur-' . bin2hex(random_bytes(8)));
     $supplier_id = !empty($data['supplier_id']) ? (int)$data['supplier_id'] : null;

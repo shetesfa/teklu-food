@@ -73,8 +73,11 @@ if ($action === 'list') {
     ]);
 }
 
-// 2. አዲስ ምርት ወይም ጥሬ ዕቃ መመዝገብ (Register Product / Raw Material)
+// 2. አዲስ ምርት ወይም ጥሬ ዕቃ መመዝገብ (Register Product / Raw Material) — Admin ብቻ
 if ($action === 'create') {
+    if (!check_permission($user, 'products_manage')) {
+        send_error('ምርት ለመመዝገብ ፈቃድ የለዎትም', 403);
+    }
     $data = get_request_data();
     $name_am = trim($data['name_am'] ?? '');
     $name_en = trim($data['name_en'] ?? '');
@@ -146,8 +149,11 @@ if ($action === 'create') {
     }
 }
 
-// 3. የምርት መረጃ ማደስ (Update Product)
+// 3. የምርት መረጃ ማደስ (Update Product) — Admin ብቻ
 if ($action === 'update') {
+    if (!check_permission($user, 'products_manage')) {
+        send_error('ምርት ለማስተካከል ፈቃድ የለዎትም', 403);
+    }
     $data = get_request_data();
     $id = (int)($data['id'] ?? 0);
     $name_am = trim($data['name_am'] ?? '');
@@ -187,8 +193,11 @@ if ($action === 'update') {
     send_success('የምርቱ መረጃ ተሻሽሏል');
 }
 
-// 4. የክምችት ማስተካከያ (Manual Stock Adjustment)
+// 4. የክምችት ማስተካከያ (Manual Stock Adjustment) — Admin ብቻ
 if ($action === 'adjust_stock') {
+    if (!check_permission($user, 'products_manage')) {
+        send_error('ክምችት ለማስተካከል ፈቃድ የለዎትም', 403);
+    }
     $data = get_request_data();
     $product_id = (int)($data['product_id'] ?? 0);
     $adjustment_type = $data['adjustment_type'] ?? 'increase'; // 'increase', 'decrease', 'wastage'

@@ -7,7 +7,7 @@ USE teklu_business_db;
 INSERT INTO users (id, uuid, username, password_hash, full_name, role, permissions, is_active, created_at)
 VALUES 
 (1, 'usr-admin-01', 'admin', '$2y$10$w0f5eF1VnBqD6Z9lS5f7xO7xK8aV2qD9w0f5eF1VnBqD6Z9lS5f7x.', 'ተክሉ ጌታቸው (ዋና አስተዳዳሪ)', 'super_admin', '{"all": true}', 1, NOW()),
-(2, 'usr-mgr-01', 'manager', '$2y$10$8u1dD9w0f5eF1VnBqD6Z9lS5f7xO7xK8aV2qD9w0f5eF1VnBqD6Z.', 'አበበ በቀለ (ስራ አስኪያጅ)', 'manager', '{"can_discount": true, "can_adjust_stock": true, "can_view_pl": true, "can_record_withdrawal": true}', 1, NOW())
+(2, 'usr-mgr-01', 'manager', '$2y$10$8u1dD9w0f5eF1VnBqD6Z9lS5f7xO7xK8aV2qD9w0f5eF1VnBqD6Z.', 'አበበ በቀለ (አስተዳዳሪ)', 'admin', '{"can_discount": true, "can_adjust_stock": true, "can_view_pl": true, "can_record_withdrawal": true}', 1, NOW())
 ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), role = VALUES(role);
 
 -- የይለፍ ቃሎችን ትክክለኛ Hash ማስገባት

@@ -613,11 +613,11 @@
       <div class="card">
         <div class="card-title" style="margin-bottom:12px;"><span>⚙️ ተጨማሪ የድርጅቱ ሞጁሎች</span></div>
         <div style="display:flex; flex-direction:column; gap:8px;">
-          <button class="btn btn-secondary" onclick="showSubModule('sub-reports')">📈 የፋይናንስና የትርፍ ሪፖርቶች (P&L)</button>
-          <button class="btn btn-secondary" onclick="showSubModule('sub-closing')">🔒 ዕለታዊ ሂሳብ መዝጊያ (Daily Closing)</button>
-          <button class="btn btn-secondary" onclick="showSubModule('sub-customers')">👥 የደንበኞች እና የብድር ዝርዝር</button>
-          <button class="btn btn-secondary" id="btn-users-management" onclick="showSubModule('sub-users')">🛡️ የተጠቃሚዎች ቁጥጥር (Super Admin)</button>
-          <button class="btn btn-secondary" onclick="showSubModule('sub-backup')">💾 የመረጃ ምትኬ (Backup & Export)</button>
+          <button class="btn btn-secondary" id="btn-reports-menu" onclick="showSubModule('sub-reports')">📈 የፋይናንስና የትርፍ ሪፖርቶች (P&L)</button>
+          <button class="btn btn-secondary" id="btn-closing-menu" onclick="showSubModule('sub-closing')">🔒 ዕለታዊ ሂሳብ መዝጊያ (Daily Closing)</button>
+          <button class="btn btn-secondary" id="btn-customers-menu" onclick="showSubModule('sub-customers')">👥 የደንበኞች እና የብድር ዝርዝር</button>
+          <button class="btn btn-secondary" id="btn-users-management" onclick="showSubModule('sub-users')">🛡️ የተጠቃሚዎች ቁጥጥር</button>
+          <button class="btn btn-secondary" id="btn-backup-menu" onclick="showSubModule('sub-backup')">💾 የመረጃ ምትኬ (Backup & Export)</button>
         </div>
       </div>
 
@@ -693,7 +693,7 @@
       <div id="sub-users" class="sub-module" style="display:none;">
         <div class="card">
           <div class="card-header-clean">
-            <div class="card-title"><span>🛡️</span> <span>የተጠቃሚዎች ቁጥጥር (Super Admin)</span></div>
+            <div class="card-title"><span>🛡️</span> <span>የተጠቃሚዎች ቁጥጥር</span></div>
             <button class="btn btn-secondary btn-sm" onclick="hideSubModules()">✕ ዝጋ</button>
           </div>
           <button class="btn btn-primary btn-sm" style="margin-bottom:10px;" onclick="openModal('modal-new-user')">+ አዲስ ተጠቃሚ</button>
@@ -744,7 +744,7 @@
       <span class="nav-icon">📦</span>
       <span data-i18n="navStock">ክምችት</span>
     </button>
-    <button class="nav-item" onclick="switchPage('page-more', this)">
+    <button class="nav-item" id="nav-more" onclick="switchPage('page-more', this)">
       <span class="nav-icon">⚙️</span>
       <span data-i18n="navMore">ተጨማሪ</span>
     </button>
@@ -784,7 +784,7 @@
         <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px; font-weight:600;">ፈጣን መግቢያ (Quick Select):</div>
         <div style="display:flex; gap:8px;">
           <button type="button" class="btn btn-secondary btn-sm" style="flex:1;" onclick="fillDemoCredentials('admin')">👑 ዋና አስተዳዳሪ</button>
-          <button type="button" class="btn btn-secondary btn-sm" style="flex:1;" onclick="fillDemoCredentials('manager')">👔 ስራ አስኪያጅ</button>
+          <button type="button" class="btn btn-secondary btn-sm" style="flex:1;" onclick="fillDemoCredentials('manager')">👔 አስተዳዳሪ (Admin)</button>
         </div>
       </div>
     </div>
@@ -1187,7 +1187,9 @@
         <div class="form-group">
           <label class="form-label">ሚና (Role)</label>
           <select id="nu-role" class="form-control" required>
-            <option value="manager">ስራ አስኪያጅ (Manager)</option>
+            <option value="worker" selected>ሠራተኛ (Worker)</option>
+            <option value="admin_worker">የአስተዳዳሪ ሠራተኛ (Admin Worker)</option>
+            <option value="admin">አስተዳዳሪ (Admin)</option>
             <option value="super_admin">ዋና አስተዳዳሪ (Super Admin)</option>
           </select>
         </div>

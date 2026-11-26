@@ -82,12 +82,17 @@ if ($action === 'me') {
     send_success('የተጠቃሚ መረጃ (User Info)', ['user' => $user]);
 }
 
-// 3. የተጠቃሚዎች ዝርዝር (Super Admin ብቻ)
+// 3. የተጠቃሚዎች ዝርዝር (Super Admin + Admin)
+// Admin የሚያየው worker እና admin_worker አካውንቶችን ብቻ ነው።
 if ($action === 'users') {
     $user = get_authenticated_user();
-    require_super_admin($user);
+    require_admin($user);
 
-    $stmt = $pdo->query("SELECT id, uuid, username, full_name, role, permissions, is_active, created_at FROM users ORDER BY id ASC");
+    if (normalize_role($user['role']) === 'admin') {
+        $stmt = $pdo->query("SELECT id, uuid, username, full_name, role, permissions, is_active, created_at FROM users WHERE role IN ('worker', 'admin_worker') ORDER BY id ASC");
+    } else {
+        $stmt = $pdo->query("SELECT id, uuid, username, full_name, role, permissions, is_active, created_at FROM users ORDER BY id ASC");
+    }
     $users = $stmt->fetchAll();
     foreach ($users as &$u) {
         $u['permissions'] = json_decode($u['permissions'] ?? '{}', true) ?: [];
@@ -96,24 +101,30 @@ if ($action === 'users') {
     send_success('የተጠቃሚዎች ዝርዝር', ['users' => $users]);
 }
 
-// 4. አዲስ ተጠቃሚ መፍጠር (Super Admin ብቻ)
+// 4. አዲስ ተጠቃሚ መፍጠር (Super Admin + Admin)
+// Admin የሚፈጥረው worker እና admin_worker ብቻ ነው — admin/super_admin መፍጠር አይችልም።
 if ($action === 'create_user') {
     $user = get_authenticated_user();
-    require_super_admin($user);
+    require_admin($user);
 
     $data = get_request_data();
     $username = trim($data['username'] ?? '');
     $full_name = trim($data['full_name'] ?? '');
     $password = $data['password'] ?? '';
-    $role = $data['role'] ?? 'manager';
+    $role = $data['role'] ?? 'worker';
     $permissions = $data['permissions'] ?? [];
 
     if (empty($username) || empty($full_name) || empty($password)) {
         send_error('ሁሉንም አስፈላጊ መረጃዎች ያስገቡ');
     }
 
-    if (!in_array($role, ['super_admin', 'manager'], true)) {
+    if (!in_array($role, ['super_admin', 'admin', 'admin_worker', 'worker'], true)) {
         send_error('ትክክለኛ ያልሆነ ሚና (Invalid Role)');
+    }
+
+    // Admin admin/super_admin role መስጠት አይችልም
+    if (normalize_role($user['role']) === 'admin' && in_array($role, ['admin', 'super_admin'], true)) {
+        send_error('አስተዳዳሪ (Admin) የ admin ወይም የ super_admin አካውንት መፍጠር አይችልም', 403);
     }
 
     $hash = password_hash($password, PASSWORD_DEFAULT);
@@ -145,18 +156,25 @@ if ($action === 'create_user') {
     }
 }
 
-// 5. ፈቃድ እና ሁኔታ ማስተካከል (Super Admin ብቻ)
+// 5. ፈቃድ፣ ሚና እና ሁኔታ ማስተካከል (Super Admin + Admin)
+// Admin የሚያስተካክለው worker እና admin_worker አካውንቶችን ብቻ ነው፤
+// role ወደ admin/super_admin መቀየር አይችልም።
 if ($action === 'update_permissions') {
     $user = get_authenticated_user();
-    require_super_admin($user);
+    require_admin($user);
 
     $data = get_request_data();
     $target_user_id = (int)($data['user_id'] ?? 0);
     $permissions = $data['permissions'] ?? [];
     $is_active = isset($data['is_active']) ? (int)$data['is_active'] : null;
+    $new_role = isset($data['role']) ? trim($data['role']) : null;
 
     if ($target_user_id <= 0) {
         send_error('ትክክለኛ የተጠቃሚ መለያ አልተገለጸም');
+    }
+
+    if ($new_role !== null && $new_role !== '' && !in_array($new_role, ['super_admin', 'admin', 'admin_worker', 'worker'], true)) {
+        send_error('ትክክለኛ ያልሆነ ሚና (Invalid Role)');
     }
 
     // የቆየውን መረጃ ማግኘት
@@ -167,11 +185,19 @@ if ($action === 'update_permissions') {
         send_error('ተጠቃሚው አልተገኘም');
     }
 
+    // የአስተዳዳሪ ገደብ: admin/super_admin አካውንት መንካት ወይም role ወደ admin/super_admin መቀየር አይቻልም
+    assert_can_manage_user($user, $oldUser, $new_role ?: null);
+
     $fields = ["permissions = :permissions"];
     $params = [
         ':permissions' => json_encode($permissions, JSON_UNESCAPED_UNICODE),
         ':id'          => $target_user_id
     ];
+
+    if ($new_role !== null && $new_role !== '') {
+        $fields[] = "role = :role";
+        $params[':role'] = $new_role;
+    }
 
     if ($is_active !== null) {
         $fields[] = "is_active = :is_active";
@@ -185,6 +211,40 @@ if ($action === 'update_permissions') {
     log_audit($user['id'], 'USER_UPDATE_PERMISSIONS', 'users', (string)$target_user_id, $oldUser, $params);
 
     send_success('የተጠቃሚ ፈቃድ ተስተካክሏል');
+}
+
+// 6. ተጠቃሚ መሰረዝ (Super Admin + Admin)
+// Admin የሚሰርዘው worker እና admin_worker አካውንቶችን ብቻ ነው፤ የራሱን አካውንት ማንም መሰረዝ አይችልም።
+if ($action === 'delete_user') {
+    $user = get_authenticated_user();
+    require_admin($user);
+
+    $data = get_request_data();
+    $target_user_id = (int)($data['user_id'] ?? 0);
+
+    if ($target_user_id <= 0) {
+        send_error('ትክክለኛ የተጠቃሚ መለያ አልተገለጸም');
+    }
+
+    if ($target_user_id === (int)$user['id']) {
+        send_error('የራስዎን አካውንት መሰረዝ አይችሉም', 403);
+    }
+
+    $stmtOld = $pdo->prepare("SELECT * FROM users WHERE id = :id");
+    $stmtOld->execute([':id' => $target_user_id]);
+    $oldUser = $stmtOld->fetch();
+    if (!$oldUser) {
+        send_error('ተጠቃሚው አልተገኘም');
+    }
+
+    assert_can_manage_user($user, $oldUser);
+
+    $stmt = $pdo->prepare("DELETE FROM users WHERE id = :id");
+    $stmt->execute([':id' => $target_user_id]);
+
+    log_audit($user['id'], 'USER_DELETE', 'users', (string)$target_user_id, $oldUser, null);
+
+    send_success('ተጠቃሚው ተሰርዟል');
 }
 
 send_error('ያልታወቀ ክንውን (Invalid Action)', 404);

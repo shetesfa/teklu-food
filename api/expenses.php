@@ -80,8 +80,11 @@ if ($action === 'list') {
     ]);
 }
 
-// 2. አዲስ ወጪ መመዝገብ (Record New Expense)
+// 2. አዲስ ወጪ መመዝገብ (Record New Expense) — worker አይችልም
 if ($action === 'create') {
+    if (!check_permission($user, 'expenses_add')) {
+        send_error('ወጪ ለመመዝገብ ፈቃድ የለዎትም', 403);
+    }
     $data = get_request_data();
     $uuid = $data['uuid'] ?? ('exp-' . bin2hex(random_bytes(8)));
     $category_id = (int)($data['category_id'] ?? 0);

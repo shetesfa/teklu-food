@@ -71,8 +71,11 @@ if ($action === 'list') {
     ]);
 }
 
-// 2. አዲስ ገንዘብ መውጣት መመዝገብ (Record New Withdrawal)
+// 2. አዲስ ገንዘብ መውጣት መመዝገብ (Record New Withdrawal) — Admin ብቻ
 if ($action === 'create') {
+    if (!check_permission($user, 'withdrawals')) {
+        send_error('ገንዘብ ለመውጣት ፈቃድ የለዎትም', 403);
+    }
     $data = get_request_data();
     $uuid = $data['uuid'] ?? ('wth-' . bin2hex(random_bytes(8)));
     $account_id = (int)($data['account_id'] ?? 0);
