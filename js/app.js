@@ -1113,12 +1113,16 @@ async function handleSupplierPayment(e) {
 // =========================================================================
 // 9. የምግብ ፈጠራ እና ሬሲፒ (Food Creation & Recipes - Offline-First Cache & Sync)
 // =========================================================================
-async function loadFoodRecipes() {
+async function loadFoodRecipes(skipLocal = false) {
   // 1. መጀመሪያ ከአካባቢው (IndexedDB) በማንበብ ወዲያውኑ UI ማሳየት
-  const localRecs = await DB.getLocalRecipes();
-  if (localRecs && localRecs.length > 0) {
-    globalFoodRecipes = localRecs;
-    renderFoodRecipes(globalFoodRecipes);
+  // skipLocal=true (just after a save): the cached list is stale by
+  // definition, so go straight to the server instead of flashing it.
+  if (!skipLocal) {
+    const localRecs = await DB.getLocalRecipes();
+    if (localRecs && localRecs.length > 0) {
+      globalFoodRecipes = localRecs;
+      renderFoodRecipes(globalFoodRecipes);
+    }
   }
 
   // 2. ኦንላይን ከሆንን ከሰርቨር API አዲሱን ዳታ ማምጣት እና ማደስ
@@ -1151,7 +1155,7 @@ function renderFoodRecipes(foods) {
   foods.forEach((f) => {
     let ingBadges = (f.ingredients || []).map((ing) => `
       <span style="background:var(--bg-subtle); border:1px solid var(--border-color); padding:2px 6px; border-radius:4px; font-size:0.75rem; white-space:nowrap;">
-        ${ing.ingredient_name_am}: <strong>${ing.quantity_needed} ${ing.unit}</strong>
+        ${ing.ingredient_name_am}: <strong>${fmtQty(ing.quantity_needed)} ${ing.unit}</strong>
       </span>
     `).join(' ');
 
@@ -1199,6 +1203,13 @@ function renderFoodRecipes(foods) {
   container.innerHTML = html;
 }
 
+// MySQL FLOAT values (e.g. 0.2) come back as 0.20000000298023224 — round
+// quantities to 3 decimals wherever they are shown or put in a form field.
+function fmtQty(v) {
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? parseFloat(n.toFixed(3)) : v;
+}
+
 function addRecipeIngredientRow(selectedIngId = '', qty = '') {
   const container = document.getElementById('recipe-ingredients-container');
   const rowId = 'rcp-ing-row-' + Date.now() + Math.random().toString(36).substring(2, 5);
@@ -1217,7 +1228,7 @@ function addRecipeIngredientRow(selectedIngId = '', qty = '') {
       <select class="form-control rcp-ing-select" style="flex:2;" onchange="calculateRecipeProfit()">
         ${ingOptions}
       </select>
-      <input type="number" class="form-control rcp-ing-qty" placeholder="መጠን" step="0.001" style="flex:1;" value="${qty}" oninput="calculateRecipeProfit()">
+      <input type="number" class="form-control rcp-ing-qty" placeholder="መጠን" step="0.001" style="flex:1;" value="${fmtQty(qty)}" oninput="calculateRecipeProfit()">
       <button type="button" class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="document.getElementById('${rowId}').remove(); calculateRecipeProfit();">✕</button>
     </div>
   `;
@@ -1301,7 +1312,7 @@ async function handleSaveFoodRecipe(e) {
     if (res.success) {
       alert('✅ የምግብ አዘገጃጀቱ (Recipe) በተሳካ ሁኔታ ተቀምጧል!');
       closeModal('modal-create-food-recipe');
-      loadFoodRecipes();
+      loadFoodRecipes(true);
       loadInitialData();
     } else {
       alert(res.error || 'ማስቀመጥ አልተሳካም');
@@ -1329,6 +1340,28 @@ function editFoodRecipe(foodId) {
     addRecipeIngredientRow(ing.ingredient_product_id, ing.quantity_needed);
   });
   calculateRecipeProfit();
+  const titleEl = document.getElementById('food-modal-title');
+  if (titleEl) titleEl.textContent = '✏️ ምግብ አድስ';
+  openModal('modal-create-food-recipe');
+}
+
+// "New food" must start from a blank form: the modal keeps the previous
+// edit's values otherwise. Resets the hidden id, names, price, cost/profit
+// display and ingredient rows, restores the "new" title, then opens it.
+function openNewFoodModal() {
+  document.getElementById('recipe-food-id').value = '';
+  document.getElementById('rcp-food-name-am').value = '';
+  const nameEnEl = document.getElementById('rcp-food-name-en');
+  if (nameEnEl) nameEnEl.value = '';
+  document.getElementById('rcp-selling-price').value = '';
+  const costEl = document.getElementById('rcp-cost-per-serving');
+  if (costEl) costEl.textContent = '0.00 ETB';
+  const profitEl = document.getElementById('rcp-estimated-profit');
+  if (profitEl) profitEl.textContent = '0.00 ETB';
+  const titleEl = document.getElementById('food-modal-title');
+  if (titleEl) titleEl.textContent = 'አዲስ ምግብ መዝግብ';
+  const container = document.getElementById('recipe-ingredients-container');
+  if (container) container.innerHTML = '';
   openModal('modal-create-food-recipe');
 }
 
@@ -1341,7 +1374,7 @@ async function deleteFoodRecipe(foodId) {
     });
     if (res.success) {
       alert('ሬሲፒው ተሰርዟል');
-      loadFoodRecipes();
+      loadFoodRecipes(true);
     } else {
       alert(res.error || 'መሰረዝ አልተሳካም');
     }
@@ -1597,16 +1630,20 @@ async function handleCreateWithdrawal(e) {
 // =========================================================================
 // 12. የስራ ማስኬጃ ወጪዎች (Expenses Controller - Offline-First Cache & Sync)
 // =========================================================================
-async function loadExpenses() {
+async function loadExpenses(skipLocal = false) {
   const search = (document.getElementById('exp-search-input')?.value || '').trim();
 
   // 1. መጀመሪያ ከአካባቢው (IndexedDB) በማንበብ ወዲያውኑ UI ማሳየት
-  const localList = await DB.getLocalExpenses();
-  if (localList && localList.length > 0) {
-    const filtered = search ? localList.filter((ex) => (ex.description || '').toLowerCase().includes(search.toLowerCase())) : localList;
-    renderExpensesList(filtered);
-    const sum = filtered.reduce((acc, it) => acc + parseFloat(it.amount || 0), 0);
-    document.getElementById('expenses-total-badge').textContent = formatMoney(sum);
+  // skipLocal=true (just after a save): the cached list is stale by
+  // definition, so go straight to the server instead of flashing it.
+  if (!skipLocal) {
+    const localList = await DB.getLocalExpenses();
+    if (localList && localList.length > 0) {
+      const filtered = search ? localList.filter((ex) => (ex.description || '').toLowerCase().includes(search.toLowerCase())) : localList;
+      renderExpensesList(filtered);
+      const sum = filtered.reduce((acc, it) => acc + parseFloat(it.amount || 0), 0);
+      document.getElementById('expenses-total-badge').textContent = formatMoney(sum);
+    }
   }
 
   // 2. ኦንላይን ከሆንን ከሰርቨር API አዲሱን ዳታ ማምጣት እና ማደስ
@@ -1694,7 +1731,7 @@ async function handleCreateExpense(e) {
     if (res.success) {
       alert('✅ የስራ ማስኬጃ ወጪው ተመዝግቧል');
       closeModal('modal-new-expense');
-      loadExpenses();
+      loadExpenses(true);
       loadDashboard('today');
     } else {
       if (res.offline) {
@@ -2299,7 +2336,15 @@ function showSubModule(subId) {
     target.style.display = 'block';
     target.scrollIntoView({ behavior: 'smooth' });
     if (subId === 'sub-users') loadUsers();
-    else if (subId === 'sub-closing') loadDailyClosingStatus();
+    else if (subId === 'sub-closing') {
+      const cashAcc = (globalAccounts || []).find((a) => a.name_en === 'Cash' || (a.name_am || '').includes('ገንዘብ'));
+      const sysCashEl = document.getElementById('closing-system-cash');
+      if (cashAcc && sysCashEl && !sysCashEl.value) {
+        sysCashEl.value = formatMoney(cashAcc.current_balance);
+        calculateClosingDiff();
+      }
+      loadDailyClosingStatus();
+    }
     else if (subId === 'sub-reports') loadReport('pl');
   }
 }
@@ -2444,6 +2489,7 @@ async function loadReport(reportType, btnEl = null) {
   }
 
   const container = document.getElementById('reports-content-container');
+  container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">⏳ በመጫን ላይ...</p>';
   try {
     const res = await API.request(`reports.php?type=${reportType}`);
     if (res.success) {

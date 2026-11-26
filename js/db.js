@@ -159,6 +159,17 @@ const DB = {
     });
   },
 
+  async _deleteOne(storeName, key) {
+    if (!this.instance) await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.instance.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const req = store.delete(key);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  },
+
   // =========================================================================
   // 1. ምርቶች እና ምድቦች (Products & Categories)
   // =========================================================================
@@ -341,6 +352,13 @@ const DB = {
 
   async getCachedAuth() {
     return this._getOne('auth_cache', 'current_auth');
+  },
+
+  // Logout must remove the cached session too: the boot code restores a
+  // cached session when no localStorage token exists, so clearing only
+  // localStorage left the user signed in again after the reload.
+  async clearCachedAuth() {
+    return this._deleteOne('auth_cache', 'current_auth');
   },
 
   // =========================================================================

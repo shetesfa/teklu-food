@@ -13,6 +13,12 @@ RUN apt-get update \
     && docker-php-ext-install pdo pdo_mysql \
     && a2enmod rewrite
 
+# Debian's Apache ships an Alias for /icons/ -> /usr/share/apache2/icons/,
+# which shadows this app's own ./icons/ directory: the logo, favicons and
+# PWA icons all 404'd live even though the files are in the image. Disable
+# mod_alias — nothing in this app uses Alias/Redirect/ScriptAlias.
+RUN a2dismod alias || true
+
 # Production PHP settings: never show errors (paths, SQL) to visitors;
 # log them to the container log instead.
 RUN printf 'display_errors=Off\nlog_errors=On\n' > /usr/local/etc/php/conf.d/production.ini

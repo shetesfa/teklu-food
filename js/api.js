@@ -136,11 +136,22 @@ const API = {
     return res;
   },
 
-  logout() {
+  // Logout must also clear the IndexedDB auth cache: the boot code
+  // restores a cached session when no localStorage token exists, so
+  // clearing only localStorage left the user signed in after the reload
+  // (logout "did nothing"). The reload happens only after the cached
+  // auth delete settles (best-effort — a cache failure must not block
+  // logout, localStorage is already cleared).
+  async logout() {
     this.token = '';
     this.user = null;
     localStorage.removeItem('teklu_token');
     localStorage.removeItem('teklu_user');
+    try {
+      await DB.clearCachedAuth();
+    } catch (e) {
+      console.warn('Auth cache clear failed (ignored):', e);
+    }
     window.location.reload();
   },
 
