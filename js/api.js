@@ -59,9 +59,15 @@ const API = {
       const data = await response.json();
 
       if (!response.ok && response.status === 401) {
-        // የተጠቃሚ ቶከን ካበቃ
-        this.logout();
-        throw new Error(data.error || 'ክፍለ ጊዜው አልቋል፤ እባክዎ እንደገና ይግቡ');
+        // የተጠቃሚ ቶከን ካበቃ — ግን በመግቢያ ጥያቄ ላይ ወይም ቶከን በሌለበት
+        // logout/reload አድርጎ ስህተቱን መደበቅ የለበትም። የስህተት ዳታውን
+        // እንመልሳለን፤ handleLogin() ስህተቱን በ #login-error-alert ውስጥ ያሳያል።
+        const isLoginRequest = endpoint.includes('auth.php') && endpoint.includes('action=login');
+        if (this.token && !isLoginRequest) {
+          this.logout();
+          throw new Error(data.error || 'ክፍለ ጊዜው አልቋል፤ እባክዎ እንደገና ይግቡ');
+        }
+        return data;
       }
 
       return data;

@@ -217,10 +217,10 @@ function fillDemoCredentials(role) {
   const pInput = document.getElementById('login-password');
   if (role === 'admin') {
     uInput.value = 'admin';
-    pInput.value = 'Admin@123';
+    pInput.value = 'password';
   } else {
     uInput.value = 'manager';
-    pInput.value = 'Manager@123';
+    pInput.value = 'password';
   }
 }
 
