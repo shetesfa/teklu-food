@@ -130,7 +130,7 @@ $stmtLowStock = $pdo->query("
     FROM products p
     LEFT JOIN stock_levels sl ON p.id = sl.product_id
     WHERE p.is_active = 1 AND p.min_stock_level > 0
-    GROUP BY p.id
+    GROUP BY p.id, p.name_en, p.name_am, p.unit, p.min_stock_level
     HAVING current_stock <= p.min_stock_level
     ORDER BY current_stock ASC
     LIMIT 15

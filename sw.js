@@ -3,7 +3,7 @@
  * Service Worker - በስልክና በኮምፒውተር ከመስመር ውጭ እንዲሰራ (Offline-First Cache)
  */
 
-const CACHE_NAME = 'teklu-food-cache-v4';
+const CACHE_NAME = 'teklu-food-cache-v5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

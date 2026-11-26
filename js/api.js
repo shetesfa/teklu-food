@@ -54,9 +54,26 @@ const API = {
       headers
     };
 
+    // 60s timeout: a cold Render free service can hang for a long time;
+    // turn a hang into a visible error instead of an endless silent wait.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    config.signal = controller.signal;
+
     try {
       const response = await fetch(`${this.baseUrl}/${endpoint}`, config);
-      const data = await response.json();
+      clearTimeout(timeoutId);
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseErr) {
+        // Server returned non-JSON (e.g. a PHP fatal error -> 500 HTML).
+        // Return a structured error instead of throwing, so one broken
+        // endpoint never kills the whole initial-data chain in
+        // loadInitialData() and leaves every list empty.
+        return { success: false, error: 'የሰርቨር ስህተት (HTTP ' + response.status + ')' };
+      }
 
       if (!response.ok && response.status === 401) {
         // የተጠቃሚ ቶከን ካበቃ — ግን በመግቢያ ጥያቄ ላይ ወይም ቶከን በሌለበት
@@ -72,7 +89,11 @@ const API = {
 
       return data;
     } catch (err) {
+      clearTimeout(timeoutId);
       // ኢንተርኔት ከሌለ ወይም ኔትወርክ ከተቋረጠ
+      if (err.name === 'AbortError') {
+        return { success: false, error: 'ሰርቨሩ መልስ መስጠት ረጅም ጊዜ ወስዷል (60 ሰከንድ)፤ እባክዎ እንደገና ይሞክሩ' };
+      }
       if (!navigator.onLine || err.message.includes('Failed to fetch')) {
         this.isOnline = false;
         this.updateStatusBadge();
@@ -103,8 +124,14 @@ const API = {
       localStorage.setItem('teklu_token', this.token);
       localStorage.setItem('teklu_user', JSON.stringify(this.user));
 
-      // ከመስመር ውጭ ለመጠቀም መሸጎጥ
-      await DB.cacheAuth(this.token, this.user);
+      // ከመስመር ውጭ ለመጠቀም መሸጎጥ — best-effort ብቻ። IndexedDB ችግር
+      // (ለምሳሌ "The database connection is closing") መግቢያው ስኬታማ
+      // ሆኖ ሳለ እንደ ስህተት እንዳይታይ ማድረግ የለበትም።
+      try {
+        await DB.cacheAuth(this.token, this.user);
+      } catch (cacheErr) {
+        console.warn('Auth cache failed (ignored):', cacheErr);
+      }
     }
     return res;
   },

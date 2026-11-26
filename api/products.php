@@ -22,15 +22,18 @@ if ($action === 'list') {
     $search = trim($_GET['search'] ?? '');
     $low_stock_only = !empty($_GET['low_stock_only']) ? true : false;
 
+    // total_stock comes from a correlated subquery, NOT a GROUP BY join:
+    // TiDB/MySQL strict ONLY_FULL_GROUP_BY rejects `p.*` grouped only by
+    // p.id, which made this list endpoint return a 500 and left every
+    // product list in the app empty (stock page, POS grid, ingredients).
     $sql = "
         SELECT 
             p.*,
             c.name_en as category_name_en,
             c.name_am as category_name_am,
-            COALESCE(SUM(sl.quantity), 0) as total_stock
+            COALESCE((SELECT SUM(sl.quantity) FROM stock_levels sl WHERE sl.product_id = p.id), 0) as total_stock
         FROM products p
         JOIN categories c ON p.category_id = c.id
-        LEFT JOIN stock_levels sl ON p.id = sl.product_id
         WHERE p.is_active = 1
     ";
     $params = [];
@@ -44,10 +47,8 @@ if ($action === 'list') {
         $params[':srch'] = '%' . $search . '%';
     }
 
-    $sql .= " GROUP BY p.id, c.id, c.name_en, c.name_am";
-
     if ($low_stock_only) {
-        $sql .= " HAVING total_stock <= p.min_stock_level AND p.min_stock_level > 0";
+        $sql .= " AND p.min_stock_level > 0 AND COALESCE((SELECT SUM(sl.quantity) FROM stock_levels sl WHERE sl.product_id = p.id), 0) <= p.min_stock_level";
     }
 
     $sql .= " ORDER BY p.category_id ASC, p.name_am ASC";

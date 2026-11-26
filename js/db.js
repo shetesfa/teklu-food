@@ -8,11 +8,16 @@ const DB = {
   dbName: 'TekluBusinessDB',
   dbVersion: 2,
   instance: null,
+  _initPromise: null,
 
   async init() {
     if (this.instance) return this.instance;
+    // Single-flight: loadInitialData() used to open the DB 6 times at once
+    // (one per lazy getLocal* call), racing and leaving stale connections
+    // that later threw "The database connection is closing" on transaction().
+    if (this._initPromise) return this._initPromise;
 
-    return new Promise((resolve, reject) => {
+    this._initPromise = new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, this.dbVersion);
 
       request.onupgradeneeded = (event) => {
@@ -84,13 +89,24 @@ const DB = {
 
       request.onsuccess = (event) => {
         this.instance = event.target.result;
+        // If another tab upgrades the DB, the browser closes this
+        // connection: drop it so the next call re-opens a fresh one
+        // instead of throwing "The database connection is closing".
+        this.instance.onversionchange = () => { this.instance.close(); this.instance = null; };
+        this.instance.onclose = () => { this.instance = null; };
         resolve(this.instance);
       };
 
       request.onerror = (event) => {
+        this._initPromise = null;
         reject(event.target.error);
       };
+
+      request.onblocked = () => {
+        console.warn('IndexedDB open blocked by another tab');
+      };
     });
+    return this._initPromise;
   },
 
   // =========================================================================

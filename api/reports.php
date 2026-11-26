@@ -116,7 +116,7 @@ if ($type === 'product_profitability') {
         JOIN sales s ON si.sale_id = s.id
         JOIN products p ON si.product_id = p.id
         WHERE DATE(s.sale_date) BETWEEN :start_d AND :end_d AND s.status = 'completed'
-        GROUP BY p.id
+        GROUP BY p.id, p.name_am, p.name_en, p.unit
         ORDER BY profit DESC
     ");
     $stmt->execute([':start_d' => $start_date, ':end_d' => $end_date]);

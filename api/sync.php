@@ -398,11 +398,9 @@ try {
 
 // ወቅታዊ መረጃዎችን ማምጣት
 $latest_products = $pdo->query("
-    SELECT p.*, COALESCE(SUM(sl.quantity), 0) as total_stock
+    SELECT p.*, COALESCE((SELECT SUM(sl.quantity) FROM stock_levels sl WHERE sl.product_id = p.id), 0) as total_stock
     FROM products p
-    LEFT JOIN stock_levels sl ON p.id = sl.product_id
     WHERE p.is_active = 1
-    GROUP BY p.id
 ")->fetchAll();
 
 $latest_accounts = $pdo->query("SELECT * FROM financial_accounts WHERE is_active = 1")->fetchAll();

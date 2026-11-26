@@ -99,11 +99,9 @@ if ($action === 'list') {
     // ለግብዓትነት የሚሆኑ የተመዘገቡ ምርቶች (ጥሬ እቃዎች)
     $stmtIngredients = $pdo->query("
         SELECT p.id, p.uuid, p.name_am, p.name_en, p.unit, p.purchase_cost,
-               COALESCE(SUM(sl.quantity), 0) as current_stock
+               COALESCE((SELECT SUM(sl.quantity) FROM stock_levels sl WHERE sl.product_id = p.id), 0) as current_stock
         FROM products p
-        LEFT JOIN stock_levels sl ON p.id = sl.product_id
         WHERE p.is_active = 1
-        GROUP BY p.id
         ORDER BY p.name_am ASC
     ");
     $availableIngredients = $stmtIngredients->fetchAll();

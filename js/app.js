@@ -10,6 +10,10 @@ let globalAccounts = [];
 let globalSuppliers = [];
 let globalCustomers = [];
 let globalFoodRecipes = [];
+let globalAvailableIngredients = []; // from recipes.php list (raw materials + current stock)
+let globalExpenseCategories = []; // from expenses.php list (type='expense')
+let productsLoadError = false; // products.php list failed — lists show an error, not a fake "0"
+let initialDataLoading = true; // true until the first loadInitialData() finishes
 let globalCart = []; // [{product, quantity}]
 let currentSupplierStatementData = null;
 
@@ -55,90 +59,112 @@ function initAppLayout() {
 
 // 2. የመነሻ መረጃዎችን መጫን (Load Initial Base Data - Offline-First Cache & Sync)
 async function loadInitialData() {
-  try {
-    // 1. መጀመሪያ ከአካባቢው (IndexedDB) በማንበብ ወዲያውኑ UI ማሳየት (Instant Local Render)
-    const [localProds, localCats, localSups, localCusts, localAccs, localRecs] = await Promise.all([
-      DB.getLocalProducts(),
-      DB.getLocalCategories(),
-      DB.getLocalContacts('supplier'),
-      DB.getLocalContacts('customer'),
-      DB.getLocalAccounts(),
-      DB.getLocalRecipes()
-    ]);
+  initialDataLoading = true;
+  productsLoadError = false;
 
-    if (localProds && localProds.length > 0) {
-      globalProducts = localProds;
-      globalCategories = localCats || [];
+  // 1. መጀመሪያ ከአካባቢው (IndexedDB) በማንበብ ወዲያውኑ UI ማሳየት (Instant Local Render)
+  // allSettled: one broken local read must not kill the rest or the server fetch.
+  const localResults = await Promise.allSettled([
+    DB.getLocalProducts(),
+    DB.getLocalCategories(),
+    DB.getLocalContacts('supplier'),
+    DB.getLocalContacts('customer'),
+    DB.getLocalAccounts(),
+    DB.getLocalRecipes()
+  ]);
+  const localValue = (i) => (localResults[i] && localResults[i].status === 'fulfilled' ? localResults[i].value : null);
+  const [localProds, localCats, localSups, localCusts, localAccs, localRecs] = [0, 1, 2, 3, 4, 5].map(localValue);
+
+  if (localProds && localProds.length > 0) {
+    globalProducts = localProds;
+    globalCategories = localCats || [];
+    populateCategoryDropdowns();
+    renderPosProducts();
+    renderStockTable();
+  }
+  if (localSups && localSups.length > 0) {
+    globalSuppliers = localSups;
+    populateSupplierDropdowns();
+  }
+  if (localCusts && localCusts.length > 0) {
+    globalCustomers = localCusts;
+    populateCustomerDropdowns();
+  }
+  if (localAccs && localAccs.length > 0) {
+    globalAccounts = localAccs;
+    populateAccountDropdowns();
+  }
+  if (localRecs && localRecs.length > 0) {
+    globalFoodRecipes = localRecs;
+    renderFoodRecipes(globalFoodRecipes);
+  }
+
+  // 2. ኦንላይን ከሆንን ከሰርቨር API አዲሱን ዳታ ማምጣት እና ማደስ
+  // All 5 fetches run IN PARALLEL (they were sequential: ~10s before lists
+  // populated) and each is isolated, so one failing endpoint can no longer
+  // stop the others. Cache writes are fire-and-forget, not awaited before rendering.
+  if (API.isOnline) {
+    const [prodRes, supRes, custRes, accRes, recRes] = await Promise.allSettled([
+      API.request('products.php?action=list'),
+      API.request('contacts.php?action=list&type=supplier'),
+      API.request('contacts.php?action=list&type=customer'),
+      API.request('withdrawals.php?action=list'),
+      API.request('recipes.php?action=list')
+    ]).then((results) => results.map((r) => (r.status === 'fulfilled' ? r.value : null)));
+
+    const ok = (res) => res && res.success;
+
+    // ምርቶች
+    if (ok(prodRes)) {
+      globalProducts = prodRes.data.products || [];
+      globalCategories = prodRes.data.categories || [];
+      DB.cacheProducts(globalProducts).catch(() => {});
+      DB.cacheCategories(globalCategories).catch(() => {});
       populateCategoryDropdowns();
       renderPosProducts();
       renderStockTable();
+    } else if (prodRes && !prodRes.offline && globalProducts.length === 0) {
+      // Server answered with an error (e.g. the old 500 from products.php):
+      // show it instead of a fake "0 products".
+      productsLoadError = true;
+      console.error('Products load failed:', prodRes.error);
+      renderPosProducts();
+      renderStockTable();
     }
-    if (localSups && localSups.length > 0) {
-      globalSuppliers = localSups;
+
+    // አቅራቢዎች
+    if (ok(supRes)) {
+      globalSuppliers = supRes.data.contacts || [];
+      DB.cacheContacts(globalSuppliers).catch(() => {});
       populateSupplierDropdowns();
     }
-    if (localCusts && localCusts.length > 0) {
-      globalCustomers = localCusts;
+
+    // ደንበኞች
+    if (ok(custRes)) {
+      globalCustomers = custRes.data.contacts || [];
+      DB.cacheContacts(globalCustomers).catch(() => {});
       populateCustomerDropdowns();
     }
-    if (localAccs && localAccs.length > 0) {
-      globalAccounts = localAccs;
+
+    // አካውንቶች
+    if (ok(accRes)) {
+      globalAccounts = accRes.data.accounts || [];
+      DB.cacheAccounts(globalAccounts).catch(() => {});
       populateAccountDropdowns();
     }
-    if (localRecs && localRecs.length > 0) {
-      globalFoodRecipes = localRecs;
+
+    // ሬሲፒዎች
+    if (ok(recRes)) {
+      globalFoodRecipes = recRes.data.foods || [];
+      globalAvailableIngredients = recRes.data.available_ingredients || [];
+      DB.cacheRecipes(globalFoodRecipes).catch(() => {});
       renderFoodRecipes(globalFoodRecipes);
     }
-
-    // 2. ኦንላይን ከሆንን ከሰርቨር API አዲሱን ዳታ ማምጣት እና ማደስ
-    if (API.isOnline) {
-      // ምርቶች
-      const prodRes = await API.request('products.php?action=list');
-      if (prodRes.success) {
-        globalProducts = prodRes.data.products || [];
-        globalCategories = prodRes.data.categories || [];
-        await DB.cacheProducts(globalProducts);
-        await DB.cacheCategories(globalCategories);
-        populateCategoryDropdowns();
-        renderPosProducts();
-        renderStockTable();
-      }
-
-      // አቅራቢዎች
-      const supRes = await API.request('contacts.php?action=list&type=supplier');
-      if (supRes.success) {
-        globalSuppliers = supRes.data.contacts || [];
-        await DB.cacheContacts(globalSuppliers);
-        populateSupplierDropdowns();
-      }
-
-      // ደንበኞች
-      const custRes = await API.request('contacts.php?action=list&type=customer');
-      if (custRes.success) {
-        globalCustomers = custRes.data.contacts || [];
-        await DB.cacheContacts(globalCustomers);
-        populateCustomerDropdowns();
-      }
-
-      // አካውንቶች
-      const accRes = await API.request('withdrawals.php?action=list');
-      if (accRes.success) {
-        globalAccounts = accRes.data.accounts || [];
-        await DB.cacheAccounts(globalAccounts);
-        populateAccountDropdowns();
-      }
-
-      // ሬሲፒዎች
-      const recRes = await API.request('recipes.php?action=list');
-      if (recRes.success) {
-        globalFoodRecipes = recRes.data.foods || [];
-        await DB.cacheRecipes(globalFoodRecipes);
-        renderFoodRecipes(globalFoodRecipes);
-      }
-    }
-  } catch (e) {
-    console.error('Initial data loading error:', e);
   }
+
+  initialDataLoading = false;
+  renderPosProducts();
+  renderStockTable();
 }
 
 // 3. ገጾችን መቀየር (Page Switching - Mobile & Desktop Synced)
@@ -367,11 +393,25 @@ function renderPosProducts() {
   const grid = document.getElementById('pos-products-grid');
   if (!grid) return;
 
+  // Loading / error states instead of a misleading "nothing found".
+  if (productsLoadError && globalProducts.length === 0) {
+    grid.innerHTML = '<div class="empty-state">⚠️ የምርቶች ዳታ መጫን አልተሳካም — ገጹን እንደገና ይጫኑ (Refresh)</div>';
+    return;
+  }
+  if (initialDataLoading && globalProducts.length === 0) {
+    grid.innerHTML = '<div class="empty-state">⏳ ምርቶች በመጫን ላይ...</div>';
+    return;
+  }
+
   const search = (document.getElementById('pos-search-input')?.value || '').toLowerCase().trim();
 
   let filtered = globalProducts.filter((p) => {
     const matchSearch = p.name_am.toLowerCase().includes(search) || p.name_en.toLowerCase().includes(search);
     if (!matchSearch) return false;
+
+    // POS sells only sellable items: raw materials have selling_price 0
+    // and must not appear as 0 ETB cards.
+    if ((parseFloat(p.selling_price) || 0) <= 0) return false;
 
     if (posCurrentCategory === 'all') return true;
     if (posCurrentCategory === 'food') return p.category_id === 4;
@@ -543,6 +583,8 @@ async function submitSale() {
     payment_method: method
   };
 
+  const saleBtn = document.getElementById('btn-confirm-sale');
+  if (saleBtn) { saleBtn.disabled = true; saleBtn.textContent = 'በመላክ ላይ...'; }
   try {
     const res = await API.request('sales.php?action=create', {
       method: 'POST',
@@ -571,6 +613,8 @@ async function submitSale() {
     }
   } catch (err) {
     alert('የሽያጭ ስህተት: ' + err.message);
+  } finally {
+    if (saleBtn) { saleBtn.disabled = false; saleBtn.textContent = 'ሽያጩን አረጋግጥ'; }
   }
 }
 
@@ -1083,8 +1127,9 @@ async function loadFoodRecipes() {
       const res = await API.request('recipes.php?action=list');
       if (res.success) {
         globalFoodRecipes = res.data.foods || [];
+        globalAvailableIngredients = res.data.available_ingredients || [];
         renderFoodRecipes(globalFoodRecipes);
-        await DB.cacheRecipes(globalFoodRecipes);
+        DB.cacheRecipes(globalFoodRecipes).catch(() => {});
       }
     } catch (e) {
       console.error('Recipes load error:', e);
@@ -1104,7 +1149,7 @@ function renderFoodRecipes(foods) {
 
   let html = '';
   foods.forEach((f) => {
-    let ingBadges = f.ingredients.map((ing) => `
+    let ingBadges = (f.ingredients || []).map((ing) => `
       <span style="background:var(--bg-subtle); border:1px solid var(--border-color); padding:2px 6px; border-radius:4px; font-size:0.75rem; white-space:nowrap;">
         ${ing.ingredient_name_am}: <strong>${ing.quantity_needed} ${ing.unit}</strong>
       </span>
@@ -1159,17 +1204,20 @@ function addRecipeIngredientRow(selectedIngId = '', qty = '') {
   const rowId = 'rcp-ing-row-' + Date.now() + Math.random().toString(36).substring(2, 5);
 
   let ingOptions = '<option value="">-- ጥሬ እቃ ይምረጡ --</option>';
-  globalProducts.forEach((p) => {
+  // Prefer the dedicated ingredient list from recipes.php (it carries
+  // current_stock); fall back to the full product list.
+  const ingSource = (globalAvailableIngredients && globalAvailableIngredients.length > 0) ? globalAvailableIngredients : globalProducts;
+  ingSource.forEach((p) => {
     const isSel = p.id === parseInt(selectedIngId) ? 'selected' : '';
     ingOptions += `<option value="${p.id}" data-unit="${p.unit}" data-cost="${p.purchase_cost}" ${isSel}>${p.name_am} - ${p.unit}</option>`;
   });
 
   const rowHtml = `
     <div id="${rowId}" style="display:flex; gap:6px; align-items:center; margin-bottom:8px; background:var(--bg-subtle); padding:6px; border-radius:var(--radius-sm);">
-      <select class="form-control rcp-ing-select" style="flex:2;" onchange="calculateRecipeProfit()" required>
+      <select class="form-control rcp-ing-select" style="flex:2;" onchange="calculateRecipeProfit()">
         ${ingOptions}
       </select>
-      <input type="number" class="form-control rcp-ing-qty" placeholder="መጠን" step="0.001" style="flex:1;" value="${qty}" oninput="calculateRecipeProfit()" required>
+      <input type="number" class="form-control rcp-ing-qty" placeholder="መጠን" step="0.001" style="flex:1;" value="${qty}" oninput="calculateRecipeProfit()">
       <button type="button" class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="document.getElementById('${rowId}').remove(); calculateRecipeProfit();">✕</button>
     </div>
   `;
@@ -1193,8 +1241,10 @@ function calculateRecipeProfit() {
   const sellingPrice = parseFloat(document.getElementById('rcp-selling-price')?.value) || 0;
   const profit = Math.max(0, sellingPrice - totalCost);
 
-  document.getElementById('rcp-cost-per-serving').textContent = formatMoney(totalCost);
-  document.getElementById('rcp-estimated-profit').textContent = formatMoney(profit);
+  const costEl = document.getElementById('rcp-cost-per-serving');
+  const profitEl = document.getElementById('rcp-estimated-profit');
+  if (costEl) costEl.textContent = formatMoney(totalCost);
+  if (profitEl) profitEl.textContent = formatMoney(profit);
 }
 
 async function handleSaveFoodRecipe(e) {
@@ -1240,6 +1290,8 @@ async function handleSaveFoodRecipe(e) {
     ingredients
   };
 
+  const submitBtn = e.submitter;
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'በመቀመጥ ላይ...'; }
   try {
     const res = await API.request('recipes.php?action=save_recipe', {
       method: 'POST',
@@ -1256,6 +1308,8 @@ async function handleSaveFoodRecipe(e) {
     }
   } catch (err) {
     alert('ስህተት: ' + err.message);
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ምግቡን መዝግብ'; }
   }
 }
 
@@ -1265,12 +1319,13 @@ function editFoodRecipe(foodId) {
 
   document.getElementById('recipe-food-id').value = food.id;
   document.getElementById('rcp-food-name-am').value = food.name_am;
-  document.getElementById('rcp-food-name-en').value = food.name_en;
+  const nameEnEl = document.getElementById('rcp-food-name-en');
+  if (nameEnEl) nameEnEl.value = food.name_en || '';
   document.getElementById('rcp-selling-price').value = food.selling_price;
 
   const container = document.getElementById('recipe-ingredients-container');
   container.innerHTML = '';
-  food.ingredients.forEach((ing) => {
+  (food.ingredients || []).forEach((ing) => {
     addRecipeIngredientRow(ing.ingredient_product_id, ing.quantity_needed);
   });
   calculateRecipeProfit();
@@ -1301,7 +1356,17 @@ async function deleteFoodRecipe(foodId) {
 function renderStockTable() {
   const container = document.getElementById('stock-cards-container');
   const countBadge = document.getElementById('products-count-badge');
-  countBadge.textContent = `${globalProducts.length} ምርቶች`;
+  countBadge.textContent = (initialDataLoading && globalProducts.length === 0) ? '⏳ በመጫን ላይ...' : `${globalProducts.length} ምርቶች`;
+
+  // Loading / error states instead of a misleading "0 products".
+  if (productsLoadError && globalProducts.length === 0) {
+    container.innerHTML = `<p style="color:var(--danger); text-align:center; padding:16px;">⚠️ የምርቶች ዳታ መጫን አልተሳካም — ገጹን እንደገና ይጫኑ (Refresh)</p>`;
+    return;
+  }
+  if (initialDataLoading && globalProducts.length === 0) {
+    container.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding:16px;">⏳ ምርቶች በመጫን ላይ...</p>`;
+    return;
+  }
 
   const search = (document.getElementById('stock-search-input')?.value || '').toLowerCase().trim();
 
@@ -1552,7 +1617,16 @@ async function loadExpenses() {
         const list = res.data.expenses || [];
         renderExpensesList(list);
         document.getElementById('expenses-total-badge').textContent = formatMoney(res.data.total_expenses);
-        await DB.cacheExpenses(list);
+        // The expense form's dropdowns come from THIS response:
+        // products.php only returns type='product' categories, so
+        // exp-category stayed empty forever.
+        globalExpenseCategories = res.data.categories || [];
+        if (res.data.accounts && res.data.accounts.length > 0) {
+          globalAccounts = res.data.accounts;
+        }
+        populateExpenseDropdowns();
+        populateAccountDropdowns();
+        DB.cacheExpenses(list).catch(() => {});
       }
     } catch (e) {
       console.error('Expenses error:', e);
@@ -1610,6 +1684,8 @@ async function handleCreateExpense(e) {
     expense_date: new Date().toISOString().slice(0, 19).replace('T', ' ')
   };
 
+  const submitBtn = e.submitter;
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'በመቀመጥ ላይ...'; }
   try {
     const res = await API.request('expenses.php?action=create', {
       method: 'POST',
@@ -1641,6 +1717,8 @@ async function handleCreateExpense(e) {
     }
   } catch (err) {
     alert('ስህተት: ' + err.message);
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ወጪውን መዝግብ'; }
   }
 }
 
@@ -2285,9 +2363,31 @@ async function loadDailyClosingStatus() {
       const d = res.data;
       document.getElementById('closing-system-cash').value = formatMoney(d.system_balances.cash);
       calculateClosingDiff();
+      const btn = document.getElementById('btn-close-day');
+      if (d.is_closed) {
+        const by = d.closing_record && d.closing_record.closed_by_name ? ' (' + d.closing_record.closed_by_name + ')' : '';
+        showClosingMsg('✅ የዛሬው ሂሳብ ተዘግቷል' + by, true);
+        if (btn) btn.disabled = true;
+      } else {
+        showClosingMsg('', true);
+        if (btn) btn.disabled = false;
+      }
+    } else {
+      showClosingMsg('❌ የዕለቱን ሁኔታ ማግኘት አልተሳካም: ' + (res.error || ''), false);
     }
   } catch (e) {
     console.error('Closing status error:', e);
+    showClosingMsg('❌ የዕለቱን ሁኔታ ማግኘት አልተሳካም: ' + e.message, false);
+  }
+}
+
+// Persistent in-page message for the daily-closing panel (alerts alone are
+// easy to miss, and a slow request used to look like "nothing happens").
+function showClosingMsg(msg, ok) {
+  const el = document.getElementById('closing-status-msg');
+  if (el) {
+    el.textContent = msg;
+    el.style.color = ok ? 'var(--primary)' : 'var(--danger)';
   }
 }
 
@@ -2303,11 +2403,14 @@ function calculateClosingDiff() {
 }
 
 async function submitDailyClosing() {
+  const btn = document.getElementById('btn-close-day');
   const actualCash = parseFloat(document.getElementById('closing-actual-cash').value) || 0;
   const actualCbe = parseFloat(document.getElementById('closing-actual-cbe').value) || 0;
   const actualTele = parseFloat(document.getElementById('closing-actual-telebirr').value) || 0;
   const reason = document.getElementById('closing-discrepancy-reason').value.trim();
 
+  if (btn) { btn.disabled = true; btn.textContent = 'በመዝጋት ላይ...'; }
+  showClosingMsg('⏳ የዕለቱ ሂሳብ በመዘጋት ላይ...', true);
   try {
     const res = await API.request('daily_closing.php?action=close', {
       method: 'POST',
@@ -2319,13 +2422,18 @@ async function submitDailyClosing() {
       })
     });
     if (res.success) {
+      showClosingMsg('✅ የዕለቱ ሂሳብ በተሳካ ሁኔታ ተዘግቷል!', true);
       alert('✅ የዕለቱ ሂሳብ በተሳካ ሁኔታ ተዘግቷል!');
       loadDailyClosingStatus();
     } else {
+      showClosingMsg('❌ ' + (res.error || 'ሂሳብ መዝጋት አልተሳካም'), false);
       alert(res.error || 'ሂሳብ መዝጋት አልተሳካም');
     }
   } catch (err) {
+    showClosingMsg('❌ ስህተት: ' + err.message, false);
     alert('ስህተት: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'የዕለቱን ሂሳብ ዝጋ'; }
   }
 }
 
@@ -2388,9 +2496,18 @@ function populateCategoryDropdowns() {
   if (npCat) {
     npCat.innerHTML = globalCategories.map((c) => `<option value="${c.id}">${c.name_am} (${c.name_en})</option>`).join('');
   }
+  populateExpenseDropdowns();
+}
+
+// የወጪ ፎርም dropdowns: ምድቦች ከ expenses.php (type='expense')፣ አካውንቶች ከ globalAccounts
+function populateExpenseDropdowns() {
   const expCat = document.getElementById('exp-category');
   if (expCat) {
-    expCat.innerHTML = globalCategories.filter((c) => c.type === 'expense').map((c) => `<option value="${c.id}">${c.name_am}</option>`).join('');
+    expCat.innerHTML = globalExpenseCategories.map((c) => `<option value="${c.id}">${c.name_am}</option>`).join('');
+  }
+  const expAcc = document.getElementById('exp-account');
+  if (expAcc) {
+    expAcc.innerHTML = globalAccounts.map((a) => `<option value="${a.id}">${a.name_am} (${formatMoney(a.current_balance)})</option>`).join('');
   }
 }
 
@@ -2444,11 +2561,13 @@ function openModal(id) {
         addRecipeIngredientRow();
       }
     }
+    if (id === 'modal-new-expense') {
+      // Refresh the expense dropdowns every time the form opens, so they
+      // are never empty even if the page was opened before data loaded.
+      populateExpenseDropdowns();
+      populateAccountDropdowns();
+    }
   }
-}
-
-function openModal(id) {
-  document.getElementById(id)?.classList.add('active');
 }
 
 function closeModal(id) {
