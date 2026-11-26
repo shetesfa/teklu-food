@@ -528,6 +528,15 @@ function togglePosPaymentDetails() {
   }
 }
 
+// የሽያጭ ሁኔታን በገጹ ላይ ማሳየት (blocking alert() ምትክ — alert ሲከፈት
+// የገጹ ዋና thread ይቆማል፤ ከመስመር ውጭ ባለው ፍሰት ውስጥ በተለይ ችግር ነው)።
+function showPosStatus(msg, isError = false) {
+  const el = document.getElementById('pos-status-msg');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--danger, #b91c1c)' : 'var(--primary, #059669)';
+}
+
 async function submitSale() {
   if (globalCart.length === 0) {
     alert('እባክዎ ቢያንስ አንድ የሚሸጥ ዕቃ ይምረጡ');
@@ -567,18 +576,38 @@ async function submitSale() {
     if (mCbe > 0) payments.push({ account_id: cbeAcc.id, amount: mCbe });
   }
 
-  const items = globalCart.map((it) => ({
-    product_id: it.product.id,
-    quantity: it.quantity,
-    unit_price: it.product.selling_price
-  }));
+  const items = globalCart.map((it) => {
+    const qty = it.quantity;
+    const uPrice = it.product.selling_price;
+    // sync.php (offline replay) needs per-item totals and costs;
+    // sales.php recomputes them server-side, so these extra fields
+    // are harmless on the online path.
+    const unitCost = parseFloat(it.product.cost_per_serving ?? it.product.production_cost ?? it.product.purchase_cost ?? 0) || 0;
+    return {
+      product_id: it.product.id,
+      quantity: qty,
+      unit_price: uPrice,
+      total_price: Math.round(qty * uPrice * 100) / 100,
+      unit_cost: unitCost
+    };
+  });
+
+  const paidAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  const customerObj = customerId ? (globalCustomers || []).find((c) => parseInt(c.id) === parseInt(customerId)) : null;
 
   const payload = {
     uuid: 'sal-' + bin2hex(8),
     sale_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
     customer_id: customerId ? parseInt(customerId) : null,
+    customer_name: customerObj ? (customerObj.name_am || customerObj.name_en || '') : '',
     items,
     discount,
+    subtotal,
+    grand_total: grandTotal,
+    paid_amount: paidAmount,
+    unpaid_balance: Math.max(0, Math.round((grandTotal - paidAmount) * 100) / 100),
+    account_id: payments.length > 0 ? payments[0].account_id : null,
+    payment_status: (grandTotal - paidAmount) <= 0 ? 'paid' : (paidAmount > 0 ? 'partial' : 'credit'),
     payments,
     payment_method: method
   };
@@ -602,7 +631,9 @@ async function submitSale() {
         // ከመስመር ውጭ IndexedDB ውስጥ ክምችት መቀነስ፣ ደረሰኝ ማዘጋጀት እና ወረፋ መያዝ
         const offlineSale = await DB.applyOfflineSale(payload, globalFoodRecipes);
         API.updateStatusBadge();
-        alert('🌐 ኢንተርኔት የለም፤ ሽያጩ ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! ክምችት ቀንሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
+        // No blocking alert(): a stuck alert parks the main thread
+        // (and headless/automation flows); show the message in-page.
+        showPosStatus('🌐 ኢንተርኔት የለም፤ ሽያጩ ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! ክምችት ቀንሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
         showReceipt(offlineSale, globalCart);
         clearCart();
         loadInitialData(); // በአካባቢው የተቀነሰውን ክምችት ማደስ
@@ -612,7 +643,7 @@ async function submitSale() {
       }
     }
   } catch (err) {
-    alert('የሽያጭ ስህተት: ' + err.message);
+    showPosStatus('የሽያጭ ስህተት: ' + err.message, true);
   } finally {
     if (saleBtn) { saleBtn.disabled = false; saleBtn.textContent = 'ሽያጩን አረጋግጥ'; }
   }
@@ -1134,6 +1165,9 @@ async function loadFoodRecipes(skipLocal = false) {
         globalAvailableIngredients = res.data.available_ingredients || [];
         renderFoodRecipes(globalFoodRecipes);
         DB.cacheRecipes(globalFoodRecipes).catch(() => {});
+        // ከመስመር ውጭ የተፈጠረ ምግብ ከተመሳሰለ በኋላ፣ የአካባቢው
+        // 'local-food-*' ቅጂ ከሰርቨር ዝርዝር ጋር እንዳይደገም አጽዳ።
+        DB.pruneLocalRecipes(globalFoodRecipes).catch(() => {});
       }
     } catch (e) {
       console.error('Recipes load error:', e);
@@ -1292,6 +1326,7 @@ async function handleSaveFoodRecipe(e) {
   }
 
   const payload = {
+    uuid: 'food-' + bin2hex(8),
     food_id: foodId ? parseInt(foodId) : null,
     name_am: nameAm,
     name_en: nameEn,
@@ -1314,6 +1349,17 @@ async function handleSaveFoodRecipe(e) {
       closeModal('modal-create-food-recipe');
       loadFoodRecipes(true);
       loadInitialData();
+    } else if (res.offline) {
+      // ከመስመር ውጭ: ምግቡ በአካባቢው ዝርዝር ውስጥ ወዲያውኑ ይታያል፤
+      // ኢንተርኔት ሲመጣ 'create_recipe' ተብሎ ወደ ሰርቨር ይመሳሰላል።
+      const ingSource = (globalAvailableIngredients && globalAvailableIngredients.length > 0)
+        ? globalAvailableIngredients
+        : globalProducts;
+      await DB.applyOfflineRecipe(payload, ingSource);
+      API.updateStatusBadge();
+      alert('🌐 ኢንተርኔት የለም፤ ምግቡ ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
+      closeModal('modal-create-food-recipe');
+      loadFoodRecipes(); // በአካባቢው የተመዘገበውን ምግብ ማሳየት
     } else {
       alert(res.error || 'ማስቀመጥ አልተሳካም');
     }

@@ -3,7 +3,12 @@
  * Service Worker - በስልክና በኮምፒውተር ከመስመር ውጭ እንዲሰራ (Offline-First Cache)
  */
 
-const CACHE_NAME = 'teklu-food-cache-v6';
+const CACHE_NAME = 'teklu-food-cache-v7';
+// NOTE: do NOT precache anything under ./icons/ — those URLs 404 live
+// (Debian Apache's /icons/ Alias shadows the app's own icons dir), and
+// cache.addAll() is atomic: one 404 failed the whole install, so the
+// worker never activated and an offline reload showed Chrome's
+// "no internet" page. Only assets verified to return 200 live are listed.
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -13,18 +18,25 @@ const ASSETS_TO_CACHE = [
   './js/db.js',
   './js/api.js',
   './js/app.js',
-  './icons/icon.svg',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/apple-touch-icon.png',
-  './icons/favicon-32.png'
+  './img/logo.svg'
 ];
 
 // 1. መጫን እና ፋይሎችን መሸጎጥ (Install Event)
+// Resilient install: cache.addAll() is atomic — a single 404 (or any
+// other failed asset) rejects the whole install and the worker is
+// discarded, so the app cannot open offline at all. Cache each asset
+// on its own instead: one failure is logged and skipped, the rest
+// still install and the worker activates.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return Promise.all(
+        ASSETS_TO_CACHE.map((url) =>
+          cache.add(url).catch((err) => {
+            console.warn('[SW] precache skipped (not cached):', url, err);
+          })
+        )
+      );
     }).then(() => self.skipWaiting())
   );
 });

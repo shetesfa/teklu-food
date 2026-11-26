@@ -17,7 +17,10 @@ RUN apt-get update \
 # which shadows this app's own ./icons/ directory: the logo, favicons and
 # PWA icons all 404'd live even though the files are in the image. Disable
 # mod_alias — nothing in this app uses Alias/Redirect/ScriptAlias.
-RUN a2dismod alias || true
+# NOTE: a2dismod alone did NOT take effect on the live service (/icons/*
+# still 404'd after the 3aef452 deploy), so also remove the module
+# symlinks directly — if a2dismod worked this is a no-op.
+RUN a2dismod alias || true; rm -f /etc/apache2/mods-enabled/alias.load /etc/apache2/mods-enabled/alias.conf
 
 # Production PHP settings: never show errors (paths, SQL) to visitors;
 # log them to the container log instead.

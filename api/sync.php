@@ -147,6 +147,137 @@ try {
                 $synced_uuids[] = $tx_uuid;
             }
 
+            // 1b. አዲስ ምግብ/ሬሲፒ መፍጠር (Food / Recipe Creation Sync)
+            // ከመስመር ውጭ የተፈጠረ ምግብ — recipes.php save_recipe የሚያደርገውን
+            // ተመሳሳይ ስራ እዚህ ይደገማል (አዲስ ምግብ INSERT ወይም ነባር UPDATE)።
+            // እንደገና መላክ ቢሆንም (retry) ምግቡ/ሬሲፒው እንዳይደገም UUID
+            // ይረጋገጣል፤ ሬሲፒዎቹ ከመግባታቸው በፊት ይሰረዛሉ።
+            elseif ($tx_type === 'create_recipe') {
+                $food_uuid = trim($payload['uuid'] ?? '');
+                $food_id = !empty($payload['food_id']) ? (int)$payload['food_id'] : 0;
+                $name_am = trim($payload['name_am'] ?? '');
+                $name_en = trim($payload['name_en'] ?? '');
+                if (empty($name_en)) {
+                    $name_en = $name_am;
+                }
+                $selling_price = (float)($payload['selling_price'] ?? 0.0);
+                $unit = trim($payload['unit'] ?? 'plate');
+                $category_id = !empty($payload['category_id']) ? (int)$payload['category_id'] : 4;
+                $ingredients = $payload['ingredients'] ?? [];
+
+                if (!empty($name_am) && is_array($ingredients) && count($ingredients) > 0) {
+                    // የግብዓቶችን ትክክለኛነት ማጣራት + የምርት ወጪ መቁጠር
+                    $cleanIngredients = [];
+                    $total_production_cost = 0.0;
+                    $valid = true;
+                    foreach ($ingredients as $ing) {
+                        $ing_id = (int)($ing['ingredient_product_id'] ?? 0);
+                        $qty = (float)($ing['quantity_needed'] ?? 0);
+                        if ($ing_id <= 0 || $qty <= 0) {
+                            $valid = false;
+                            break;
+                        }
+                        $stmtCost = $pdo->prepare("SELECT purchase_cost, unit FROM products WHERE id = :id");
+                        $stmtCost->execute([':id' => $ing_id]);
+                        $costRow = $stmtCost->fetch();
+                        if (!$costRow) {
+                            $valid = false;
+                            break;
+                        }
+                        $total_production_cost += round($qty * (float)($costRow['purchase_cost'] ?? 0.0), 2);
+                        $cleanIngredients[] = [
+                            'ingredient_product_id' => $ing_id,
+                            'quantity_needed'       => $qty,
+                            'unit'                  => trim($ing['unit'] ?? '') ?: ($costRow['unit'] ?? 'kg')
+                        ];
+                    }
+
+                    if ($valid) {
+                        if ($food_id > 0) {
+                            // ነባር ምግብን ማደስ (እንደገና መላክ ቢሆንም ተመሳሳይ ውጤት ነው)
+                            $stmtChk = $pdo->prepare("SELECT id FROM products WHERE id = :id");
+                            $stmtChk->execute([':id' => $food_id]);
+                            if ($stmtChk->fetch()) {
+                                $pdo->prepare("
+                                    UPDATE products
+                                    SET name_am = :name_am, name_en = :name_en, selling_price = :sprice,
+                                        production_cost = :prod_cost, unit = :unit, category_id = :cat_id, updated_at = NOW()
+                                    WHERE id = :id
+                                ")->execute([
+                                    ':name_am'   => $name_am,
+                                    ':name_en'   => $name_en,
+                                    ':sprice'    => $selling_price,
+                                    ':prod_cost' => round($total_production_cost, 2),
+                                    ':unit'      => $unit,
+                                    ':cat_id'    => $category_id,
+                                    ':id'        => $food_id
+                                ]);
+                                $parent_id = $food_id;
+                            } else {
+                                $parent_id = 0;
+                            }
+                        } else {
+                            // አዲስ ምግብ — UUID ሲደገም (እንደገና መላክ) እንዳይደገም መከላከል
+                            $parent_id = 0;
+                            if (!empty($food_uuid)) {
+                                $stmtChk = $pdo->prepare("SELECT id FROM products WHERE uuid = :uuid");
+                                $stmtChk->execute([':uuid' => $food_uuid]);
+                                $row = $stmtChk->fetch();
+                                if ($row) {
+                                    $parent_id = (int)$row['id'];
+                                }
+                            }
+                            if ($parent_id === 0) {
+                                $new_uuid = !empty($food_uuid) ? $food_uuid : ('food-' . bin2hex(random_bytes(8)));
+                                $pdo->prepare("
+                                    INSERT INTO products (
+                                        uuid, name_en, name_am, category_id, unit, purchase_cost, production_cost,
+                                        selling_price, min_stock_level, source, has_expiry, is_active, created_at
+                                    ) VALUES (
+                                        :uuid, :name_en, :name_am, :cat_id, :unit, 0.00, :prod_cost,
+                                        :sprice, 0.00, 'company', 0, 1, NOW()
+                                    )
+                                ")->execute([
+                                    ':uuid'      => $new_uuid,
+                                    ':name_en'   => $name_en,
+                                    ':name_am'   => $name_am,
+                                    ':cat_id'    => $category_id,
+                                    ':unit'      => $unit,
+                                    ':prod_cost' => round($total_production_cost, 2),
+                                    ':sprice'    => $selling_price
+                                ]);
+                                $parent_id = (int)$pdo->lastInsertId();
+                            }
+                        }
+
+                        if ($parent_id > 0) {
+                            // የድሮ ሬሲፒ ረድፎችን ማስወገድ (ለማደስም ሆነ ለ retry መደጋገም መከላከያ)
+                            $pdo->prepare("DELETE FROM recipes WHERE parent_product_id = :pid")->execute([':pid' => $parent_id]);
+                            $stmtRcp = $pdo->prepare("
+                                INSERT INTO recipes (uuid, parent_product_id, ingredient_product_id, quantity_needed, unit, created_at)
+                                VALUES (:uuid, :p_id, :ing_id, :qty, :unit, NOW())
+                            ");
+                            foreach ($cleanIngredients as $cleanIng) {
+                                $rcp_uuid = 'rcp-' . bin2hex(random_bytes(8));
+                                $stmtRcp->execute([
+                                    ':uuid'   => $rcp_uuid,
+                                    ':p_id'   => $parent_id,
+                                    ':ing_id' => $cleanIng['ingredient_product_id'],
+                                    ':qty'    => $cleanIng['quantity_needed'],
+                                    ':unit'   => $cleanIng['unit']
+                                ]);
+                            }
+                            log_audit($user['id'], 'RECIPE_SAVE', 'recipes', (string)$parent_id, null, $payload);
+                        }
+                    } else {
+                        $errors[] = ['uuid' => $tx_uuid, 'error' => 'የሬሲፒው ግብዓቶች ትክክል አይደሉም (create_recipe)'];
+                    }
+                } else {
+                    $errors[] = ['uuid' => $tx_uuid, 'error' => 'የምግብ ስም ወይም ግብዓቶች አልተገኙም (create_recipe)'];
+                }
+                $synced_uuids[] = $tx_uuid;
+            }
+
             // 2. እቃ መረከቢያ (Goods Receiving / Purchase Sync)
             elseif ($tx_type === 'purchase') {
                 $stmtCheck = $pdo->prepare("SELECT id FROM purchases WHERE uuid = :uuid");

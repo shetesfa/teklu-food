@@ -381,9 +381,16 @@ const DB = {
       if (recipe && recipe.ingredients && recipe.ingredients.length > 0) {
         // የሬሲፒ ግብዓቶችን መቀነስ
         for (const ing of recipe.ingredients) {
-          const ingProdId = parseInt(ing.product_id);
-          const reqQty = parseFloat(ing.quantity) * qty;
-          await this._adjustProductStock(ingProdId, -reqQty);
+          // recipes.php returns ingredient_product_id / quantity_needed
+          // (older payloads used product_id / quantity) — accept both.
+          // The old field names made parseInt(undefined) = NaN, and
+          // store.get(NaN) threw DataError before anything was saved
+          // or queued, so the whole offline sale was lost.
+          const ingProdId = parseInt(ing.ingredient_product_id ?? ing.product_id);
+          const reqQty = parseFloat(ing.quantity_needed ?? ing.quantity) * qty;
+          if (Number.isFinite(ingProdId) && Number.isFinite(reqQty)) {
+            await this._adjustProductStock(ingProdId, -reqQty);
+          }
         }
       } else {
         // ተራ ምርት
@@ -391,9 +398,16 @@ const DB = {
       }
     }
 
-    // 2. የተከፈለውን ወደ ፋይናንስ አካውንት መደመር
+    // 2. የተከፈለውን ወደ ፋይናንስ አካውንቶች መደመር (ድብልቅ ክፍያም ጭምር)
     const paid = parseFloat(salePayload.paid_amount || 0);
-    if (paid > 0 && salePayload.account_id) {
+    if (Array.isArray(salePayload.payments) && salePayload.payments.length > 0) {
+      for (const pay of salePayload.payments) {
+        const payAmt = parseFloat(pay.amount || 0);
+        if (payAmt > 0 && pay.account_id) {
+          await this._adjustAccountBalance(parseInt(pay.account_id), payAmt);
+        }
+      }
+    } else if (paid > 0 && salePayload.account_id) {
       await this._adjustAccountBalance(parseInt(salePayload.account_id), paid);
     }
 
@@ -410,6 +424,7 @@ const DB = {
       sale_date: new Date().toISOString().replace('T', ' ').substring(0, 19),
       grand_total: parseFloat(salePayload.grand_total),
       paid_amount: paid,
+      total_paid: paid, // showReceipt() reads total_paid for the receipt
       unpaid_balance: unpaid,
       payment_method: salePayload.payment_method || 'cash',
       payment_status: unpaid <= 0 ? 'paid' : (paid > 0 ? 'partial' : 'credit'),
@@ -628,10 +643,102 @@ const DB = {
     return customerData;
   },
 
+  /**
+   * ከመስመር ውጭ አዲስ ምግብ/ሬሲፒ መፍጠር (ወይም ነባር ምግብን ማደስ) —
+   * ምግቡ በአካባቢው ዝርዝር ውስጥ ወዲያውኑ ይታያል፤ ኢንተርኔት ሲመጣ
+   * 'create_recipe' ተብሎ ወደ ሰርቨር ይመሳሰላል (api/sync.php)።
+   * ingredientSource: available-ingredients / products list, for the
+   * names, units, purchase costs and stock of each ingredient.
+   */
+  async applyOfflineRecipe(recipePayload, ingredientSource) {
+    if (!this.instance) await this.init();
+
+    const source = ingredientSource || [];
+    const findIng = (id) => source.find((p) => parseInt(p.id) === parseInt(id));
+
+    let costPerServing = 0;
+    let maxServings = null;
+    const ingredients = (recipePayload.ingredients || []).map((ing) => {
+      const src = findIng(ing.ingredient_product_id);
+      const qty = parseFloat(ing.quantity_needed) || 0;
+      const unitCost = src ? parseFloat(src.purchase_cost || 0) : 0;
+      const lineCost = Math.round(qty * unitCost * 100) / 100;
+      costPerServing += lineCost;
+      const stock = src ? parseFloat(src.current_stock || 0) : 0;
+      if (qty > 0) {
+        const possible = Math.floor(stock / qty);
+        if (maxServings === null || possible < maxServings) maxServings = possible;
+      }
+      return {
+        ingredient_product_id: parseInt(ing.ingredient_product_id),
+        quantity_needed: qty,
+        unit: ing.unit || (src ? src.unit : 'kg'),
+        ingredient_name_am: src ? src.name_am : '',
+        ingredient_name_en: src ? src.name_en : '',
+        ingredient_unit: src ? src.unit : (ing.unit || 'kg'),
+        ingredient_purchase_cost: unitCost,
+        current_stock: stock,
+        line_cost: lineCost
+      };
+    });
+
+    const sellingPrice = parseFloat(recipePayload.selling_price) || 0;
+    const foodId = recipePayload.food_id ? parseInt(recipePayload.food_id) : 0;
+    // Edit of an existing food keeps its numeric id (the next server
+    // fetch overwrites it); a new food gets a local id until it syncs.
+    const localFood = {
+      id: foodId > 0 ? foodId : ('local-food-' + Date.now()),
+      uuid: recipePayload.uuid || ('food-' + Date.now()),
+      name_am: recipePayload.name_am,
+      name_en: recipePayload.name_en || recipePayload.name_am,
+      category_id: parseInt(recipePayload.category_id) || 4,
+      category_name_am: 'የተዘጋጁ ምግቦች',
+      category_name_en: 'Prepared Foods',
+      unit: recipePayload.unit || 'plate',
+      selling_price: sellingPrice,
+      cost_per_serving: Math.round(costPerServing * 100) / 100,
+      estimated_profit: Math.max(0, Math.round((sellingPrice - costPerServing) * 100) / 100),
+      max_servings: Math.max(0, maxServings === null ? 0 : maxServings),
+      ingredients,
+      ingredients_count: ingredients.length,
+      is_offline: true,
+      created_at: new Date().toISOString()
+    };
+    await this._putOne('recipes', localFood);
+
+    // The original save_recipe payload is the queue item, so sync.php
+    // can replay exactly what the user entered once back online.
+    await this.enqueueTransaction('create_recipe', recipePayload);
+
+    return localFood;
+  },
+
+  /**
+   * ከሰርቨር ከተመሳሰለ በኋላ ከአካባቢው ዝርዝር ውስጥ ያሉ የተባዙ (ghost)
+   * ምግቦችን ማጽዳት — የአካባቢው 'local-food-*' መዝገብ UUID-ው ከሰርቨር
+   * ምግብ ጋር ከተገናኘ፣ ሰርቨሩ እሱን አስቀምጧል ማለት ነው።
+   */
+  async pruneLocalRecipes(serverFoods) {
+    if (!this.instance) await this.init();
+    if (!Array.isArray(serverFoods) || serverFoods.length === 0) return;
+    const serverUuids = new Set(serverFoods.map((f) => f.uuid).filter(Boolean));
+    if (serverUuids.size === 0) return;
+    const local = await this._getAll('recipes');
+    for (const rec of local) {
+      if (typeof rec.id === 'string' && rec.id.indexOf('local-food-') === 0 && serverUuids.has(rec.uuid)) {
+        await this._deleteOne('recipes', rec.id);
+      }
+    }
+  },
+
   // -------------------------------------------------------------------------
   // የውስጥ ረዳት አሰራሮች (Internal Updaters)
   // -------------------------------------------------------------------------
   async _adjustProductStock(productId, delta) {
+    // A non-finite key (NaN) makes store.get() throw DataError
+    // synchronously and aborts the whole offline operation — skip it
+    // instead of losing the sale/receiving that is being applied.
+    if (!Number.isFinite(productId)) return;
     const prod = await this._getOne('products', productId);
     if (prod) {
       prod.total_stock = Math.max(0, parseFloat((parseFloat(prod.total_stock || 0) + delta).toFixed(3)));
