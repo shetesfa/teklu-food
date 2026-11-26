@@ -6,7 +6,7 @@
 
 const DB = {
   dbName: 'TekluBusinessDB',
-  dbVersion: 2,
+  dbVersion: 3,
   instance: null,
   _initPromise: null,
 
@@ -84,6 +84,13 @@ const DB = {
         // 12. የተጠቃሚ ምስክር ወረቀት (Auth Cache)
         if (!db.objectStoreNames.contains('auth_cache')) {
           db.createObjectStore('auth_cache', { keyPath: 'key' });
+        }
+
+        // 13. የስራ ማስኬጃ ወጪ ምድቦች (Expense Categories — type='expense')
+        // ከ 'categories' (የምርት ምድቦች) ተለይቶ — በአንድ store ቢቀመጡ
+        // የወጪ ምድቦች በአዲስ ምርት ፎርም ውስጥ ይታያሉ።
+        if (!db.objectStoreNames.contains('expense_categories')) {
+          db.createObjectStore('expense_categories', { keyPath: 'id' });
         }
       };
 
@@ -264,6 +271,16 @@ const DB = {
   // =========================================================================
   // 8. የስራ ማስኬጃ ወጪዎች (Expenses)
   // =========================================================================
+  // የወጪ ምድቦች (type='expense') ከ expenses.php list ምላሽ ብቻ ናቸው —
+  // ከመስመር ውጭ የወጪ ፎርሙ dropdown ባዶ እንዳይሆን እዚህ ይቀመጣሉ።
+  async cacheExpenseCategories(categories) {
+    return this._putAll('expense_categories', categories);
+  },
+
+  async getLocalExpenseCategories() {
+    return this._getAll('expense_categories');
+  },
+
   async cacheExpenses(expenses) {
     return this._putAll('expenses', expenses);
   },
@@ -726,6 +743,25 @@ const DB = {
     const local = await this._getAll('recipes');
     for (const rec of local) {
       if (typeof rec.id === 'string' && rec.id.indexOf('local-food-') === 0 && serverUuids.has(rec.uuid)) {
+        await this._deleteOne('recipes', rec.id);
+      }
+    }
+  },
+
+  /**
+   * sync.php ካረጋገጠ በኋላ የአካባቢው 'local-food-*' ቅጂ ማጽዳት —
+   * UUID-ው በተመሳሰሉት (synced_uuids) ውስጥ እና በ errors ውስጥ ከሌለ፣
+   * ሰርቨሩ እሱን አስቀምጧል ማለት ነው። pruneLocalRecipes ከሰርቨር ዝርዝር
+   * ጋር የሚያደርገው ተመሳሳይ ማረጋገጫ ነው።
+   */
+  async pruneLocalRecipesByUuids(uuids) {
+    if (!this.instance) await this.init();
+    if (!Array.isArray(uuids) || uuids.length === 0) return;
+    const uuidSet = new Set(uuids.filter(Boolean));
+    if (uuidSet.size === 0) return;
+    const local = await this._getAll('recipes');
+    for (const rec of local) {
+      if (typeof rec.id === 'string' && rec.id.indexOf('local-food-') === 0 && uuidSet.has(rec.uuid)) {
         await this._deleteOne('recipes', rec.id);
       }
     }

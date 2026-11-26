@@ -70,10 +70,11 @@ async function loadInitialData() {
     DB.getLocalContacts('supplier'),
     DB.getLocalContacts('customer'),
     DB.getLocalAccounts(),
-    DB.getLocalRecipes()
+    DB.getLocalRecipes(),
+    DB.getLocalExpenseCategories()
   ]);
   const localValue = (i) => (localResults[i] && localResults[i].status === 'fulfilled' ? localResults[i].value : null);
-  const [localProds, localCats, localSups, localCusts, localAccs, localRecs] = [0, 1, 2, 3, 4, 5].map(localValue);
+  const [localProds, localCats, localSups, localCusts, localAccs, localRecs, localExpCats] = [0, 1, 2, 3, 4, 5, 6].map(localValue);
 
   if (localProds && localProds.length > 0) {
     globalProducts = localProds;
@@ -93,6 +94,10 @@ async function loadInitialData() {
   if (localAccs && localAccs.length > 0) {
     globalAccounts = localAccs;
     populateAccountDropdowns();
+  }
+  if (localExpCats && localExpCats.length > 0) {
+    globalExpenseCategories = localExpCats;
+    populateExpenseDropdowns();
   }
   if (localRecs && localRecs.length > 0) {
     globalFoodRecipes = localRecs;
@@ -158,6 +163,11 @@ async function loadInitialData() {
       globalFoodRecipes = recRes.data.foods || [];
       globalAvailableIngredients = recRes.data.available_ingredients || [];
       DB.cacheRecipes(globalFoodRecipes).catch(() => {});
+      // Boot-time fetch is the first post-sync server list: prune any
+      // offline food whose UUID is now on the server (loadFoodRecipes
+      // does the same on page visits — without this the ghost survived
+      // a reload because nothing pruned here).
+      DB.pruneLocalRecipes(globalFoodRecipes).catch(() => {});
       renderFoodRecipes(globalFoodRecipes);
     }
   }
@@ -1692,6 +1702,18 @@ async function loadExpenses(skipLocal = false) {
     }
   }
 
+  // ከመስመር ውጭ: የወጪ ምድቦች ከሰርቨር ምላሽ ብቻ ይመጡ ነበር — እዚህ
+  // ከተቀመጡት (IndexedDB) መልሰው ማምጣት ካልተደረገ የወጪ ፎርሙ
+  // dropdown ባዶ ሆኖ ወጪ መመዝገብ አይቻልም (globalAccounts የሚደረገው
+  // ተመሳሳይ ንድፍ ነው)።
+  if (!API.isOnline && globalExpenseCategories.length === 0) {
+    const cachedCats = await DB.getLocalExpenseCategories().catch(() => []);
+    if (cachedCats && cachedCats.length > 0) {
+      globalExpenseCategories = cachedCats;
+      populateExpenseDropdowns();
+    }
+  }
+
   // 2. ኦንላይን ከሆንን ከሰርቨር API አዲሱን ዳታ ማምጣት እና ማደስ
   if (API.isOnline) {
     try {
@@ -1710,6 +1732,7 @@ async function loadExpenses(skipLocal = false) {
         populateExpenseDropdowns();
         populateAccountDropdowns();
         DB.cacheExpenses(list).catch(() => {});
+        DB.cacheExpenseCategories(globalExpenseCategories).catch(() => {});
       }
     } catch (e) {
       console.error('Expenses error:', e);

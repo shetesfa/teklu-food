@@ -177,6 +177,15 @@ const API = {
       if (res.success && res.data) {
         if (res.data.synced_uuids && res.data.synced_uuids.length > 0) {
           await DB.markTransactionsSynced(res.data.synced_uuids);
+          // An offline-created food whose UUID sync.php confirmed is
+          // on the server now: drop its local 'local-food-*' ghost row.
+          // A uuid sync.php reported in errors[] was NOT saved — it
+          // stays local so the food is not lost.
+          const failedUuids = new Set((res.data.errors || []).map((e) => e.uuid));
+          const confirmedUuids = res.data.synced_uuids.filter((u) => !failedUuids.has(u));
+          if (confirmedUuids.length > 0) {
+            await DB.pruneLocalRecipesByUuids(confirmedUuids).catch(() => {});
+          }
         }
 
         if (res.data.server_state && res.data.server_state.products) {
