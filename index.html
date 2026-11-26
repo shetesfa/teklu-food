@@ -76,10 +76,10 @@
       <div class="sidebar-brand-title">ተክሉ ምግብ ቤት</div>
     </div>
     <nav class="sidebar-nav">
-      <button class="sidebar-link active" onclick="switchPage('page-dashboard', this)">
+      <button class="sidebar-link active" id="nav-dashboard" onclick="switchPage('page-dashboard', this)">
         <span class="sidebar-icon">📊</span> <span data-i18n="navDashboard">ዳሽቦርድ</span>
       </button>
-      <button class="sidebar-link" onclick="switchPage('page-pos', this)">
+      <button class="sidebar-link" id="nav-pos" onclick="switchPage('page-pos', this)">
         <span class="sidebar-icon">🛒</span> <span data-i18n="navSales">ሽያጭ (POS)</span>
       </button>
       <button class="sidebar-link" onclick="switchPage('page-customer-debts', this)">
@@ -724,11 +724,11 @@
        4. የታችኛው አሰሳ አሞሌ (Bottom Navigation Bar - Mobile First)
        ========================================================================= -->
   <nav class="bottom-nav">
-    <button class="nav-item active" onclick="switchPage('page-dashboard', this)">
+    <button class="nav-item active" id="nav-dashboard-mobile" onclick="switchPage('page-dashboard', this)">
       <span class="nav-icon">📊</span>
       <span data-i18n="navDashboard">ዳሽቦርድ</span>
     </button>
-    <button class="nav-item" onclick="switchPage('page-pos', this)">
+    <button class="nav-item" id="nav-pos-mobile" onclick="switchPage('page-pos', this)">
       <span class="nav-icon">🛒</span>
       <span data-i18n="navSales">ሽያጭ</span>
     </button>

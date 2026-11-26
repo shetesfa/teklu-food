@@ -66,13 +66,20 @@ function initAppLayout() {
     if (!isAdminWorker) hideEl('btn-customers-menu');
     // ምትኬ: super_admin ብቻ
     if (!isSuperAdmin) hideEl('btn-backup-menu');
+    // ዳሽቦርድ: worker አይችልም — POS + ምግብ/ክምችት እይታ ብቻ
+    if (role === 'worker') { hideEl('nav-dashboard'); hideEl('nav-dashboard-mobile'); }
     // worker ምንም የተጨማሪ ሞጁል ስለሌለው የ"ተጨማሪ" አሰሳውን ሙሉ በሙሉ ደብቅ
     if (!isAdminWorker) hideEl('nav-more');
   }
 
   // የመነሻ ዳታዎችን መጫን
   loadInitialData();
-  loadDashboard('today');
+  // worker: ዳሽቦርድ አይታይም — መግቢያ በኋላ በቀጥታ ወደ ሽያጭ (POS) ገጽ
+  if (currentRole() === 'worker') {
+    switchPage('page-pos', document.getElementById('nav-pos') || document.getElementById('nav-pos-mobile'));
+  } else {
+    loadDashboard('today');
+  }
 }
 
 // 2. የመነሻ መረጃዎችን መጫን (Load Initial Base Data - Offline-First Cache & Sync)

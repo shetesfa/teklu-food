@@ -3,7 +3,7 @@
  * Service Worker - በስልክና በኮምፒውተር ከመስመር ውጭ እንዲሰራ (Offline-First Cache)
  */
 
-const CACHE_NAME = 'teklu-food-cache-v10';
+const CACHE_NAME = 'teklu-food-cache-v11';
 // NOTE: do NOT precache anything under ./icons/ — those URLs 404 live
 // (Debian Apache's /icons/ Alias shadows the app's own icons dir), and
 // cache.addAll() is atomic: one 404 failed the whole install, so the
