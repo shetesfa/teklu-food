@@ -21,8 +21,7 @@ if ($action === 'export_json') {
         'users', 'categories', 'stock_locations', 'products', 'recipes',
         'financial_accounts', 'contacts', 'stock_levels', 'stock_movements',
         'purchases', 'purchase_items', 'sales', 'sale_items', 'payments',
-        'expenses', 'withdrawals', 'internal_transfers', 'farm_productions',
-        'daily_closings', 'audit_logs'
+        'expenses', 'withdrawals', 'daily_closings', 'audit_logs', 'devices'
     ];
 
     $backupData = [
