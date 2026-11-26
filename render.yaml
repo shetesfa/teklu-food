@@ -1,0 +1,30 @@
+# Teklu Food & Business Management — Render blueprint (free tier)
+# ------------------------------------------------------------------
+# One free Docker web service: teklu-food
+#   https://teklu-food.onrender.com
+# Database is EXTERNAL: TiDB Cloud Serverless, cluster meash-db
+# (Tokyo), database teklu_business_db — Render has no free MySQL.
+# No secret VALUES in this file — every credential is `sync: false`
+# and is set in the Render Dashboard only (Environment tab).
+# Deploy either from this blueprint OR by creating the service
+# manually in the dashboard — not both, or you get two services.
+services:
+  - type: web
+    name: teklu-food
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: DB_HOST
+        sync: false # TiDB Cloud host, e.g. gateway01.ap-northeast-1.prod.aws.tidbcloud.com
+      - key: DB_PORT
+        value: "4000"
+      - key: DB_NAME
+        value: teklu_business_db
+      - key: DB_USER
+        sync: false # TiDB database user for teklu_business_db
+      - key: DB_PASS
+        sync: false # TiDB database password — set in the dashboard only
+      - key: DB_SSL
+        value: "1" # TiDB Serverless requires TLS (see config/db.php)
