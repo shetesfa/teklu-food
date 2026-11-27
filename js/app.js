@@ -233,7 +233,7 @@ function switchPage(pageId, btnEl) {
 
   // ገጹ ሲቀየር ተዛማጅ ዳታ ማደስ
   if (pageId === 'page-dashboard') loadDashboard('today');
-  else if (pageId === 'page-pos') renderPosProducts();
+  else if (pageId === 'page-pos') refreshPosProducts();
   else if (pageId === 'page-customer-debts') loadCustomerDebts();
   else if (pageId === 'page-receiving') loadReceivingData();
   else if (pageId === 'page-recipes') loadFoodRecipes();
@@ -487,6 +487,29 @@ function renderPosProducts() {
     `;
   });
   grid.innerHTML = html;
+}
+
+// POS grid: re-fetch the products list from the server so a food created
+// (or edited) elsewhere in the session appears without a full page reload.
+// (switchPage('page-pos') used to only re-render the stale in-memory list,
+// so a just-saved food stayed invisible until reload.)
+async function refreshPosProducts() {
+  if (API.isOnline) {
+    try {
+      const res = await API.request('products.php?action=list');
+      if (res.success) {
+        globalProducts = res.data.products || [];
+        globalCategories = res.data.categories || [];
+        DB.cacheProducts(globalProducts).catch(() => {});
+        DB.cacheCategories(globalCategories).catch(() => {});
+        populateCategoryDropdowns();
+        renderStockTable();
+      }
+    } catch (e) {
+      console.error('POS products refresh error:', e);
+    }
+  }
+  renderPosProducts();
 }
 
 function addToCart(productId) {
@@ -1393,7 +1416,7 @@ async function handleSaveFoodRecipe(e) {
       alert('✅ የምግብ አዘገጃጀቱ (Recipe) በተሳካ ሁኔታ ተቀምጧል!');
       closeModal('modal-create-food-recipe');
       loadFoodRecipes(true);
-      loadInitialData();
+      refreshPosProducts(); // አዲሱ ምግብ በ POS grid ውስጥ ወዲያውኑ ይታይ (reload ሳያስፈልግ)
     } else if (res.offline) {
       // ከመስመር ውጭ: ምግቡ በአካባቢው ዝርዝር ውስጥ ወዲያውኑ ይታያል፤
       // ኢንተርኔት ሲመጣ 'create_recipe' ተብሎ ወደ ሰርቨር ይመሳሰላል።
