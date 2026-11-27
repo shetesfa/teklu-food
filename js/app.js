@@ -2748,6 +2748,150 @@ async function loadReport(reportType, btnEl = null) {
 }
 
 // =========================================================================
+// ዘመናዊ ሪፖርት (Modern Reports) — ብዙ ማጣሪያዎች: ቀን, ምድብ, ምርት, አካውንት, ክፍያ, ሠራተኛ
+// super_admin + admin ብቻ (Reports ሞጁል ራሱ ለ admin+ ብቻ ነው)።
+// =========================================================================
+let modernStaffList = null; // ከ auth.php?action=users (lazy)
+
+function modernDateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function loadModernReport(btnEl = null) {
+  if (btnEl) {
+    btnEl.parentElement.querySelectorAll('.btn').forEach((b) => b.classList.remove('active'));
+    btnEl.classList.add('active');
+  }
+  const container = document.getElementById('reports-content-container');
+  const prodCats = (globalCategories || []).filter((c) => !c.type || c.type === 'product');
+  const sellable = (globalProducts || []).filter((p) => parseFloat(p.selling_price || 0) > 0);
+  container.innerHTML = `
+    <div style="background:var(--bg-subtle); padding:12px; border-radius:var(--radius-sm); margin-top:10px;">
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+        <button class="btn btn-secondary btn-sm" data-preset="today" onclick="applyModernPreset('today', this)">ዛሬ</button>
+        <button class="btn btn-secondary btn-sm" data-preset="week" onclick="applyModernPreset('week', this)">ይህ ሳምንት</button>
+        <button class="btn btn-secondary btn-sm active" data-preset="month" onclick="applyModernPreset('month', this)">ይህ ወር</button>
+        <button class="btn btn-secondary btn-sm" data-preset="custom" onclick="applyModernPreset('custom', this)">ብጁ</button>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div class="form-group"><label class="form-label">ከ (From)</label><input type="date" id="mr-from" class="form-control" onchange="runModernReport()"></div>
+        <div class="form-group"><label class="form-label">እስከ (To)</label><input type="date" id="mr-to" class="form-control" onchange="runModernReport()"></div>
+        <div class="form-group"><label class="form-label">ምድብ (Category)</label><select id="mr-category" class="form-control" onchange="runModernReport()"><option value="">ሁሉም ምድቦች</option>${prodCats.map((c) => `<option value="${c.id}">${c.name_am}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">ምግብ/ምርት (Product)</label><select id="mr-product" class="form-control" onchange="runModernReport()"><option value="">ሁሉም ምርቶች</option>${sellable.map((p) => `<option value="${p.id}">${p.name_am}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">አካውንት (Account)</label><select id="mr-account" class="form-control" onchange="runModernReport()"><option value="">ሁሉም አካውንቶች</option>${(globalAccounts || []).map((a) => `<option value="${a.id}">${a.name_am}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">የክፍያ ዘዴ (Payment)</label><select id="mr-payment" class="form-control" onchange="runModernReport()"><option value="all">ሁሉም</option><option value="cash">ጥሬ ገንዘብ (Cash)</option><option value="credit">ብድር (Credit)</option><option value="mixed">ድብልቅ (Mixed)</option></select></div>
+        <div class="form-group"><label class="form-label">ሠራተኛ (Staff)</label><select id="mr-staff" class="form-control" onchange="runModernReport()"><option value="">ሁሉም ሠራተኞች</option></select></div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="runModernReport()">🔍 ሪፖርቱን አሳይ (Show Report)</button>
+      <div id="mr-results" style="margin-top:12px;"></div>
+    </div>
+  `;
+  // የዚህ ወር ቀኖች (ነባሪ)
+  const now = new Date();
+  document.getElementById('mr-from').value = modernDateStr(new Date(now.getFullYear(), now.getMonth(), 1));
+  document.getElementById('mr-to').value = modernDateStr(now);
+  // ሠራተኞች (lazy — admin+ ብቻ ነው የሚያየው)
+  const fillStaff = () => {
+    const sel = document.getElementById('mr-staff');
+    if (sel && modernStaffList) sel.innerHTML = '<option value="">ሁሉም ሠራተኞች</option>' + modernStaffList.map((u) => `<option value="${u.id}">${u.full_name} (@${u.username})</option>`).join('');
+  };
+  if (!modernStaffList) {
+    API.request('auth.php?action=users').then((res) => {
+      if (res && res.success) { modernStaffList = res.data.users || []; fillStaff(); }
+    }).catch(() => {});
+  } else {
+    fillStaff();
+  }
+  runModernReport();
+}
+
+function applyModernPreset(preset, btnEl) {
+  if (btnEl) {
+    btnEl.parentElement.querySelectorAll('.btn').forEach((b) => b.classList.remove('active'));
+    btnEl.classList.add('active');
+  }
+  const fromEl = document.getElementById('mr-from');
+  const toEl = document.getElementById('mr-to');
+  if (!fromEl || !toEl) return;
+  const now = new Date();
+  const today = modernDateStr(now);
+  if (preset === 'today') {
+    fromEl.value = today; toEl.value = today;
+  } else if (preset === 'week') {
+    const day = now.getDay() === 0 ? 7 : now.getDay(); // ሰኞ = 1
+    const monday = new Date(now); monday.setDate(now.getDate() - (day - 1));
+    fromEl.value = modernDateStr(monday); toEl.value = today;
+  } else if (preset === 'month') {
+    fromEl.value = modernDateStr(new Date(now.getFullYear(), now.getMonth(), 1)); toEl.value = today;
+  }
+  // custom: ቀኖቹን እንደነበሩ ይተዋቸዋል — ተጠቃሚው በእጅ ይለውጣል
+  runModernReport();
+}
+
+async function runModernReport() {
+  const box = document.getElementById('mr-results');
+  const fromEl = document.getElementById('mr-from');
+  const toEl = document.getElementById('mr-to');
+  if (!box || !fromEl || !toEl) return;
+  const q = new URLSearchParams({
+    type: 'modern',
+    start_date: fromEl.value,
+    end_date: toEl.value,
+    category_id: document.getElementById('mr-category').value,
+    product_id: document.getElementById('mr-product').value,
+    account_id: document.getElementById('mr-account').value,
+    payment_method: document.getElementById('mr-payment').value,
+    staff_id: document.getElementById('mr-staff').value
+  });
+  box.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">⏳ በመጫን ላይ...</p>';
+  try {
+    const res = await API.request('reports.php?' + q.toString());
+    if (!res.success) { box.innerHTML = '<p style="color:var(--danger); text-align:center;">' + (res.error || 'ሪፖርት መጫን አልተሳካም') + '</p>'; return; }
+    const s = res.data.summary;
+    const payLabel = { cash: 'ጥሬ ገንዘብ', credit: 'ብድር', mixed: 'ድብልቅ' };
+    let dayRows = '';
+    (res.data.sales_by_day || []).forEach((d) => {
+      dayRows += `<tr><td>${d.day}</td><td>${d.sales_count}</td><td>${formatMoney(d.revenue)}</td></tr>`;
+    });
+    let topRows = '';
+    (res.data.top_products || []).forEach((p) => {
+      topRows += `<tr><td>${p.name_am}</td><td>${p.sold_qty} ${p.unit}</td><td>${formatMoney(p.total_sales)}</td><td style="color:var(--primary); font-weight:700;">${formatMoney(p.profit)}</td></tr>`;
+    });
+    let expRows = '';
+    (res.data.expenses_by_category || []).forEach((e) => {
+      expRows += `<tr><td>${e.category_name}</td><td>${e.cnt}</td><td>${formatMoney(e.total_amount)}</td></tr>`;
+    });
+    let saleRows = '';
+    (res.data.sales_list || []).forEach((sl) => {
+      saleRows += `<tr><td>${sl.receipt_number}</td><td>${(sl.sale_date || '').slice(0, 16).replace('T', ' ')}</td><td>${sl.customer_name || '-'}</td><td>${sl.staff_name || '-'}</td><td>${payLabel[sl.pay_method] || sl.pay_method}</td><td>${formatMoney(sl.grand_total)}</td></tr>`;
+    });
+    box.innerHTML = `
+      <div class="stats-grid" style="margin-bottom:12px;">
+        <div class="stat-box highlight"><div class="stat-label">ገቢ (Revenue)</div><div class="stat-value primary">${formatMoney(s.revenue)}</div></div>
+        <div class="stat-box"><div class="stat-label">COGS</div><div class="stat-value">${formatMoney(s.cogs)}</div></div>
+        <div class="stat-box"><div class="stat-label">ጠቅላላ ትርፍ (Gross Profit)</div><div class="stat-value primary">${formatMoney(s.gross_profit)}</div></div>
+        <div class="stat-box"><div class="stat-label">ወጪ (Expenses)</div><div class="stat-value" style="color:var(--danger);">${formatMoney(s.expenses)}</div></div>
+        <div class="stat-box"><div class="stat-label">መውጣት (Withdrawals)</div><div class="stat-value" style="color:var(--warning);">${formatMoney(s.withdrawals)}</div></div>
+        <div class="stat-box highlight"><div class="stat-label">የተጣራ ትርፍ (Net Profit)</div><div class="stat-value primary">${formatMoney(s.net_profit)}</div></div>
+        <div class="stat-box"><div class="stat-label">የሽያጭ ብዛት (Sales)</div><div class="stat-value">${s.sales_count}</div></div>
+        <div class="stat-box"><div class="stat-label">ቅናሽ (Discounts)</div><div class="stat-value">${formatMoney(s.discounts)}</div></div>
+      </div>
+      <div style="font-weight:700; margin:10px 0 4px;">📅 በቀን ሽያጭ (Sales by Day)</div>
+      <div class="table-responsive"><table class="app-table"><thead><tr><th>ቀን</th><th>ብዛት</th><th>ገቢ</th></tr></thead><tbody>${dayRows || '<tr><td colspan="3" style="text-align:center;">ዳታ የለም</td></tr>'}</tbody></table></div>
+      <div style="font-weight:700; margin:10px 0 4px;">🏆 ከፍተኛ ምርቶች በገቢ (Top Products)</div>
+      <div class="table-responsive"><table class="app-table"><thead><tr><th>ምርት</th><th>የተሸጠ</th><th>ሽያጭ</th><th>ትርፍ</th></tr></thead><tbody>${topRows || '<tr><td colspan="4" style="text-align:center;">ዳታ የለም</td></tr>'}</tbody></table></div>
+      <div style="font-weight:700; margin:10px 0 4px;">💸 ወጪ በምድብ (Expenses by Category)</div>
+      <div class="table-responsive"><table class="app-table"><thead><tr><th>ምድብ</th><th>ብዛት</th><th>መጠን</th></tr></thead><tbody>${expRows || '<tr><td colspan="3" style="text-align:center;">ዳታ የለም</td></tr>'}</tbody></table></div>
+      <div style="font-weight:700; margin:10px 0 4px;">🧾 የሽያጭ ዝርዝር (Sales List — የቅርብ 50)</div>
+      <div class="table-responsive"><table class="app-table"><thead><tr><th>ደረሰኝ</th><th>ቀን</th><th>ደንበኛ</th><th>ሠራተኛ</th><th>ክፍያ</th><th>ጠቅላላ</th></tr></thead><tbody>${saleRows || '<tr><td colspan="6" style="text-align:center;">ዳታ የለም</td></tr>'}</tbody></table></div>
+    `;
+  } catch (e) {
+    console.error('Modern report error:', e);
+    box.innerHTML = '<p style="color:var(--danger); text-align:center;">ስህተት: ' + e.message + '</p>';
+  }
+}
+
+// =========================================================================
 // 15. ረዳት ተግባራት (Helpers & Dropdown Fillers)
 // =========================================================================
 function populateCategoryDropdowns() {
