@@ -82,7 +82,7 @@
       <button class="sidebar-link" id="nav-pos" onclick="switchPage('page-pos', this)">
         <span class="sidebar-icon">🛒</span> <span data-i18n="navSales">ሽያጭ (POS)</span>
       </button>
-      <button class="sidebar-link" onclick="switchPage('page-customer-debts', this)">
+      <button class="sidebar-link" id="nav-debts" onclick="switchPage('page-customer-debts', this)">
         <span class="sidebar-icon">💳</span> <span data-i18n="navCustomerDebts">የደንበኛ ዱቤ</span>
       </button>
       <button class="sidebar-link" onclick="switchPage('page-receiving', this)">
@@ -1271,24 +1271,13 @@
         </form>
       </div>
 
-      <!-- ደንበኛው የወሰዳቸው ምግቦች/ትዕዛዞች ዝርዝር (Orders & Dishes Taken) -->
-      <div class="card" style="margin-bottom:12px;">
-        <div class="card-header-clean">
-          <div class="card-title-sm"><span>🍽️</span> <span>የተወሰዱ ምግቦችና ትዕዛዞች ዝርዝር</span></div>
-          <span id="cust-stmt-orders-badge" class="badge-tag info">0 ትዕዛዞች</span>
-        </div>
-        <div id="cust-stmt-orders-container" style="max-height:220px; overflow-y:auto;">
-          <!-- በ JS ይሞላል -->
-        </div>
-      </div>
-
-      <!-- የተከፈሉ ክፍያዎች ታሪክ (Payment History) -->
+      <!-- የምግብ ዱቤ ታሪክ — አንድ የጊዜ መስመር (Meal-Credit Ledger Timeline) -->
       <div class="card">
         <div class="card-header-clean">
-          <div class="card-title-sm"><span>🧾</span> <span>የክፍያዎች ታሪክ</span></div>
-          <span id="cust-stmt-payments-badge" class="badge-tag paid">0 ክፍያዎች</span>
+          <div class="card-title-sm"><span>📜</span> <span>የምግብ ዱቤ ታሪክ (Ledger) — ምግቦችና ክፍያዎች በአንድ የጊዜ መስመር</span></div>
+          <span id="cust-stmt-timeline-badge" class="badge-tag info">0 ግብዓቶች</span>
         </div>
-        <div id="cust-stmt-payments-container" style="max-height:180px; overflow-y:auto;">
+        <div id="cust-stmt-timeline-container" style="max-height:320px; overflow-y:auto;">
           <!-- በ JS ይሞላል -->
         </div>
       </div>

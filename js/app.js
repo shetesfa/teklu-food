@@ -64,6 +64,8 @@ function initAppLayout() {
     if (!isAdmin) { hideEl('btn-reports-menu'); hideEl('btn-closing-menu'); }
     // ደንበኞች: worker አይችልም (admin_worker ማየት ይችላል)
     if (!isAdminWorker) hideEl('btn-customers-menu');
+    // የደንበኛ ዱቤ ገጽ: super_admin + admin ብቻ
+    if (!isAdmin) hideEl('nav-debts');
     // ምትኬ: super_admin ብቻ
     if (!isSuperAdmin) hideEl('btn-backup-menu');
     // ዳሽቦርድ: worker አይችልም — POS + ምግብ/ክምችት እይታ ብቻ
@@ -204,6 +206,14 @@ async function loadInitialData() {
 
 // 3. ገጾችን መቀየር (Page Switching - Mobile & Desktop Synced)
 function switchPage(pageId, btnEl) {
+  // የዱቤ ገጽ: super_admin + admin ብቻ (worker/admin_worker መክፈት አይችሉም)
+  if (pageId === 'page-customer-debts') {
+    const role = currentRole();
+    if (role !== 'super_admin' && role !== 'admin') {
+      alert('የደንበኛ ዱቤ ገጽ ለአስተዳዳሪ (Admin) እና ከዚያ በላይ ብቻ ነው');
+      return;
+    }
+  }
   // ሁሉንም ገጾች ደብቅ
   document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
 
@@ -2128,10 +2138,8 @@ async function viewCustomerDebtDetail(customerId) {
   populateAccountDropdowns();
 
   // መረጃዎችን ከ API ማምጣት
-  const ordersContainer = document.getElementById('cust-stmt-orders-container');
-  const paymentsContainer = document.getElementById('cust-stmt-payments-container');
-  ordersContainer.innerHTML = '<p style="text-align:center; padding:12px; font-size:0.8rem; color:var(--text-muted);">መረጃዎች በመጫን ላይ...</p>';
-  paymentsContainer.innerHTML = '<p style="text-align:center; padding:12px; font-size:0.8rem; color:var(--text-muted);">ክፍያዎች በመጫን ላይ...</p>';
+  const timelineContainer = document.getElementById('cust-stmt-timeline-container');
+  timelineContainer.innerHTML = '<p style="text-align:center; padding:12px; font-size:0.8rem; color:var(--text-muted);">መረጃዎች በመጫን ላይ...</p>';
 
   if (API.isOnline) {
     try {
@@ -2155,69 +2163,103 @@ function renderCustomerStatementDetails(data) {
   document.getElementById('cust-stmt-total-credit').textContent = formatMoney(summary.total_sales_amount || 0);
   document.getElementById('cust-stmt-total-paid').textContent = formatMoney(summary.total_payments_received || 0);
   document.getElementById('cust-stmt-unpaid-debt').textContent = formatMoney(summary.outstanding_balance || 0);
-  document.getElementById('cust-stmt-orders-badge').textContent = (data.sales || []).length + ' ትዕዛዞች';
-  document.getElementById('cust-stmt-payments-badge').textContent = (data.payments || []).length + ' ክፍያዎች';
-
-  // 1. የተወሰዱ ምግቦችና ትዕዛዞች
-  const ordersContainer = document.getElementById('cust-stmt-orders-container');
+  // አንድ የጊዜ መስመር (Meal-Credit Ledger Timeline): ምግቦች + የዱቤ ሰፈራ ክፍያዎች አንድ ላይ፣ ከድሮ ወደ አዲስ
   const sales = data.sales || [];
-  if (sales.length === 0) {
-    ordersContainer.innerHTML = '<p style="text-align:center; padding:12px; font-size:0.8rem; color:var(--text-muted);">ምንም የተመዘገበ የዱቤ ትዕዛዝ የለም</p>';
-  } else {
-    let html = '<div style="display:flex; flex-direction:column; gap:6px;">';
-    sales.forEach((s) => {
+  const payments = data.payments || [];
+
+  // በሽያጭ ጊዜ የተከፈለውን መጠን ማስላት (transaction_type='sale', reference_id = የሽያጩ uuid)
+  const paidAtSale = {};
+  payments.forEach((p) => {
+    if (p.transaction_type === 'sale' && p.reference_id) {
+      paidAtSale[p.reference_id] = (paidAtSale[p.reference_id] || 0) + parseFloat(p.amount || 0);
+    }
+  });
+
+  const entries = [];
+  sales.forEach((s) => {
+    const paid = paidAtSale[s.uuid] || 0;
+    const effect = s.status === 'completed' ? Math.max(0, parseFloat(s.grand_total || 0) - paid) : 0;
+    entries.push({ kind: 'meal', date: s.sale_date, sale: s, paid, effect });
+  });
+  payments.forEach((p) => {
+    // የዱቤ ሰፈራ ክፍያዎች ብቻ በጊዜ መስመሩ ውስጥ ይታያሉ (በሽያጭ ጊዜ የተከፈለው በምግብ ግብዓቱ ውስጥ ተካቷል)
+    if (p.transaction_type === 'customer_credit_settlement') {
+      entries.push({ kind: 'payment', date: p.payment_date, payment: p, effect: -parseFloat(p.amount || 0) });
+    }
+  });
+  // ከድሮ ወደ አዲስ (chronological)፤ በተመሳሳይ ቀን ምግብ ከክፍያ በፊት
+  entries.sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if (a.kind === b.kind) return 0;
+    return a.kind === 'meal' ? -1 : 1;
+  });
+
+  document.getElementById('cust-stmt-timeline-badge').textContent = entries.length + ' ግብዓቶች';
+
+  const container = document.getElementById('cust-stmt-timeline-container');
+  if (entries.length === 0) {
+    container.innerHTML = '<p style="text-align:center; padding:12px; font-size:0.8rem; color:var(--text-muted);">ምንም የተመዘገበ ምግብ ወይም ክፍያ የለም</p>';
+    return;
+  }
+
+  let running = 0;
+  let html = '<div style="display:flex; flex-direction:column; gap:6px;">';
+  entries.forEach((e) => {
+    running = Math.round((running + e.effect) * 100) / 100;
+    if (e.kind === 'meal') {
+      const s = e.sale;
+      const cancelled = s.status !== 'completed';
       const itemsText = (s.items || []).map((it) => `${it.food_name_am} x${it.quantity} (${formatMoney(it.total_price)})`).join(', ') || 'ምግብ';
       html += `
-        <div style="background:#fff; border:1px solid var(--border-color); padding:8px 10px; border-radius:var(--radius-sm); font-size:0.82rem;">
+        <div style="background:#fff; border:1px solid var(--border-color); ${cancelled ? 'opacity:0.65;' : ''} padding:8px 10px; border-radius:var(--radius-sm); font-size:0.82rem;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:700; color:var(--text-main);">ደረሰኝ #${s.receipt_number}</span>
+            <span style="font-weight:700; color:var(--text-main);">🍽️ ደረሰኝ #${s.receipt_number}${cancelled ? ' (ተሰርዟል)' : ''}</span>
             <span style="font-size:0.75rem; color:var(--text-muted);">${s.sale_date}</span>
           </div>
           <div style="color:var(--text-secondary); margin:4px 0; font-size:0.78rem;">
-            🍽️ <strong>የተወሰዱ ምግቦች፡</strong> ${itemsText}
+            <strong>የተወሰዱ ምግቦች፡</strong> ${itemsText}
           </div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-            <span style="font-weight:800; color:var(--primary);">ድምር፡ ${formatMoney(s.grand_total)}</span>
+            <span style="font-weight:800; color:var(--primary);">+${formatMoney(s.grand_total)}${e.paid > 0 ? ` (በቦታው የተከፈለ ${formatMoney(e.paid)})` : ''}</span>
+            <span style="font-size:0.78rem; font-weight:700;">ቀሪ ዕዳ፡ <span style="color:var(--danger);">${formatMoney(running)}</span></span>
+          </div>
+          <div style="text-align:right; margin-top:4px;">
             <button class="btn btn-outline-primary btn-sm" onclick='showSaleReceiptModal(${JSON.stringify(s).replace(/'/g, "&#39;")})' style="padding:2px 8px; font-size:0.75rem;">
               🧾 የዱቤ ደረሰኝ
             </button>
           </div>
         </div>
       `;
-    });
-    html += '</div>';
-    ordersContainer.innerHTML = html;
-  }
-
-  // 2. የተፈጸሙ ክፍያዎች
-  const paymentsContainer = document.getElementById('cust-stmt-payments-container');
-  const payments = data.payments || [];
-  if (payments.length === 0) {
-    paymentsContainer.innerHTML = '<p style="text-align:center; padding:12px; font-size:0.8rem; color:var(--text-muted);">እስካሁን የተፈጸመ ክፍያ የለም</p>';
-  } else {
-    let html = '<div style="display:flex; flex-direction:column; gap:6px;">';
-    payments.forEach((p) => {
+    } else {
+      const p = e.payment;
       html += `
-        <div style="background:#fff; border:1px solid #bbf7d0; padding:8px 10px; border-radius:var(--radius-sm); font-size:0.82rem;">
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:8px 10px; border-radius:var(--radius-sm); font-size:0.82rem;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:700; color:#166534;">ክፍያ #${p.reference_id}</span>
+            <span style="font-weight:700; color:#166534;">💰 ክፍያ #${p.reference_id}</span>
             <span style="font-size:0.75rem; color:var(--text-muted);">${p.payment_date}</span>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
             <span>በ${p.account_name_am || 'ጥሬ ገንዘብ'} | ${p.notes || 'ዕዳ ክፍያ'}</span>
-            <span style="font-weight:800; color:#059669;">+${formatMoney(p.amount)}</span>
+            <span style="font-weight:800; color:#059669;">−${formatMoney(p.amount)}</span>
           </div>
-          <div style="text-align:right; margin-top:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+            <span style="font-size:0.78rem; font-weight:700;">ቀሪ ዕዳ፡ <span style="color:var(--danger);">${formatMoney(running)}</span></span>
             <button class="btn btn-outline-primary btn-sm" onclick='showPaymentVoucherModal(${JSON.stringify(p).replace(/'/g, "&#39;")}, "${data.customer?.name || ''}")' style="padding:2px 8px; font-size:0.75rem;">
               🧾 የክፍያ ደረሰኝ
             </button>
           </div>
         </div>
       `;
-    });
-    html += '</div>';
-    paymentsContainer.innerHTML = html;
+    }
+  });
+  html += '</div>';
+
+  // የተሰላ ቀሪ ከተመዘገበው ቀሪ ጋር ማወዳደር (reconciliation check)
+  const stored = parseFloat(summary.outstanding_balance || 0);
+  if (Math.abs(running - stored) > 0.01) {
+    html += `<div style="margin-top:8px; padding:8px 10px; background:#fef3c7; border:1px solid #fbbf24; border-radius:var(--radius-sm); font-size:0.78rem; color:#92400e;">⚠️ የተሰላ ቀሪ (${formatMoney(running)}) ከተመዘገበው ቀሪ (${formatMoney(stored)}) ይለያል — እባክዎ ይመርምሩ</div>`;
   }
+  container.innerHTML = html;
 }
 
 function renderOfflineCustomerStatementDetails(cust) {
@@ -2225,16 +2267,14 @@ function renderOfflineCustomerStatementDetails(cust) {
   document.getElementById('cust-stmt-total-credit').textContent = formatMoney(bal);
   document.getElementById('cust-stmt-total-paid').textContent = '0.00 ETB';
   document.getElementById('cust-stmt-unpaid-debt').textContent = formatMoney(bal);
-  document.getElementById('cust-stmt-orders-badge').textContent = 'ከመስመር ውጭ';
-  document.getElementById('cust-stmt-payments-badge').textContent = 'ከመስመር ውጭ';
+  document.getElementById('cust-stmt-timeline-badge').textContent = 'ከመስመር ውጭ';
 
-  document.getElementById('cust-stmt-orders-container').innerHTML = `
+  document.getElementById('cust-stmt-timeline-container').innerHTML = `
     <div style="padding:10px; font-size:0.82rem; color:var(--text-secondary); text-align:center;">
       ከመስመር ውጭ (Offline) ሁነታ ላይ ነዎት። የቀደሙ ዝርዝሮች ኢንተርኔት ሲገናኝ ሙሉ በሙሉ ይዘረዘራሉ።
       <div style="font-weight:800; margin-top:4px; color:var(--danger);">የአሁኑ ቀሪ ዕዳ፡ ${formatMoney(bal)}</div>
     </div>
   `;
-  document.getElementById('cust-stmt-payments-container').innerHTML = '<p style="text-align:center; padding:10px; font-size:0.8rem; color:var(--text-muted);">የክፍያ ታሪክ ከመስመር ውጭ አይገኝም</p>';
 }
 
 function calculateRemainingCustomerDebt() {
