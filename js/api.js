@@ -75,6 +75,14 @@ const API = {
         return { success: false, error: 'የሰርቨር ስህተት (HTTP ' + response.status + ')' };
       }
 
+      // ከመስመር ውጭ የ SW መልስ (HTTP 200, {offline:true}) ሲመጣ fetch
+      // አይጠፋም — ስለዚህ እዚህ ላይ ነው የኦንላይን ምልክቱ የሚዘመነው፤
+      // ካልሆነ badge እስከ 30 ሰከንድ interval ድረስ "online" ሆኖ ይቀራል።
+      if (data && data.offline) {
+        this.isOnline = false;
+        this.updateStatusBadge();
+      }
+
       if (!response.ok && response.status === 401) {
         // የተጠቃሚ ቶከን ካበቃ — ግን በመግቢያ ጥያቄ ላይ ወይም ቶከን በሌለበት
         // logout/reload አድርጎ ስህተቱን መደበቅ የለበትም። የስህተት ዳታውን
@@ -201,6 +209,7 @@ const API = {
       } catch (e) { /* ቶከን ከሌለ sync እስኪገቡ ድረስ ይጠብቃል */ }
       this.token = cachedToken;
       this.isOnline = false;
+      this.updateStatusBadge();
       localStorage.setItem('teklu_user', JSON.stringify(this.user));
       if (cachedToken) localStorage.setItem('teklu_token', cachedToken);
       else localStorage.removeItem('teklu_token');

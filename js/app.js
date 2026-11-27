@@ -151,16 +151,17 @@ async function loadInitialData() {
   }
 
   // 2. ኦንላይን ከሆንን ከሰርቨር API አዲሱን ዳታ ማምጣት እና ማደስ
-  // All 5 fetches run IN PARALLEL (they were sequential: ~10s before lists
+  // All 6 fetches run IN PARALLEL (they were sequential: ~10s before lists
   // populated) and each is isolated, so one failing endpoint can no longer
   // stop the others. Cache writes are fire-and-forget, not awaited before rendering.
   if (API.isOnline) {
-    const [prodRes, supRes, custRes, accRes, recRes] = await Promise.allSettled([
+    const [prodRes, supRes, custRes, accRes, recRes, expRes] = await Promise.allSettled([
       API.request('products.php?action=list'),
       API.request('contacts.php?action=list&type=supplier'),
       API.request('contacts.php?action=list&type=customer'),
       API.request('withdrawals.php?action=list'),
-      API.request('recipes.php?action=list')
+      API.request('recipes.php?action=list'),
+      API.request('expenses.php?action=list')
     ]).then((results) => results.map((r) => (r.status === 'fulfilled' ? r.value : null)));
 
     const ok = (res) => res && res.success;
@@ -215,6 +216,16 @@ async function loadInitialData() {
       // a reload because nothing pruned here).
       DB.pruneLocalRecipes(globalFoodRecipes).catch(() => {});
       renderFoodRecipes(globalFoodRecipes);
+    }
+
+    // የወጪ ምድቦች — በ boot ጊዜ ማሞቅ: ምድቦቹ የሚመጡት ከ
+    // expenses.php ምላሽ ብቻ ስለሆነ፣ የወጪ ገጽ ሳይከፈት
+    // የወጪ ፎርሙ dropdown ባዶ ሆኖ ይቀራል (fresh profile ላይ
+    // ኦንላይንም ቢሆን ወጪ መመዝገብ አይቻልም)።
+    if (ok(expRes)) {
+      globalExpenseCategories = expRes.data.categories || [];
+      populateExpenseDropdowns();
+      DB.cacheExpenseCategories(globalExpenseCategories).catch(() => {});
     }
   }
 
@@ -1795,6 +1806,16 @@ async function loadExpenses(skipLocal = false) {
   if (API.isOnline) {
     try {
       const res = await API.request(`expenses.php?action=list&search=${encodeURIComponent(search)}`);
+      // ጥያቄው ራሱ ከመስመር ውጭ መልስ ከሰጠ (SW offline JSON) — በገጽ
+      // መግቢያ ላይ API.isOnline ገና true ስለነበር የላይኛው
+      // fallback አልሰራም። እዚህ ምድቦቹን ከተቀመጡት መልሰው አምጣ።
+      if (res.offline && globalExpenseCategories.length === 0) {
+        const cachedCats = await DB.getLocalExpenseCategories().catch(() => []);
+        if (cachedCats && cachedCats.length > 0) {
+          globalExpenseCategories = cachedCats;
+          populateExpenseDropdowns();
+        }
+      }
       if (res.success) {
         const list = res.data.expenses || [];
         renderExpensesList(list);
@@ -2787,7 +2808,9 @@ async function loadReport(reportType, btnEl = null) {
   container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">⏳ በመጫን ላይ...</p>';
   try {
     const res = await API.request(`reports.php?type=${reportType}`);
-    if (res.success) {
+    if (res.offline) {
+      container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">📶 ከመስመር ውጭ ነዎት — ሪፖርቱ ኢንተርኔት ሲመጣ ብቻ ነው የሚታየው። እባክዎ ኦንላይን ሆነው እንደገና ይሞክሩ።</p>';
+    } else if (res.success) {
       if (reportType === 'pl') {
         const s = res.data.statement;
         container.innerHTML = `
@@ -2823,6 +2846,8 @@ async function loadReport(reportType, btnEl = null) {
           </div>
         `;
       }
+    } else {
+      container.innerHTML = '<p style="color:var(--danger); text-align:center; padding:16px;">' + (res.error || 'ሪፖርት መጫን አልተሳካም') + '</p>';
     }
   } catch (e) {
     console.error('Report error:', e);
@@ -2928,6 +2953,7 @@ async function runModernReport() {
   box.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">⏳ በመጫን ላይ...</p>';
   try {
     const res = await API.request('reports.php?' + q.toString());
+    if (res.offline) { box.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">📶 ከመስመር ውጭ ነዎት — ዘመናዊ ሪፖርቱ ኢንተርኔት ሲመጣ ብቻ ነው የሚታየው። እባክዎ ኦንላይን ሆነው እንደገና ይሞክሩ።</p>'; return; }
     if (!res.success) { box.innerHTML = '<p style="color:var(--danger); text-align:center;">' + (res.error || 'ሪፖርት መጫን አልተሳካም') + '</p>'; return; }
     const s = res.data.summary;
     const payLabel = { cash: 'ጥሬ ገንዘብ', credit: 'ብድር', mixed: 'ድብልቅ' };
