@@ -309,11 +309,11 @@ async function handleLogin(e) {
 function fillDemoCredentials(role) {
   const uInput = document.getElementById('login-username');
   const pInput = document.getElementById('login-password');
-  if (role === 'admin') {
-    uInput.value = 'admin';
+  if (role === 'superadmin') {
+    uInput.value = 'superadmin';
     pInput.value = 'password';
   } else {
-    uInput.value = 'manager';
+    uInput.value = 'admin';
     pInput.value = 'password';
   }
 }
