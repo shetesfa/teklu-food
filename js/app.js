@@ -2502,13 +2502,26 @@ async function loadUsers() {
     if (res.success) {
       const users = res.data.users || [];
       const container = document.getElementById('users-list-container');
+      // Role dropdown በኣክተሩ role ይጣራል — admin የሚያየው worker/admin_worker ብቻ ነው
+      const actorIsSuper = currentRole() === 'super_admin';
+      const roleOpts = [
+        ['worker', 'ሠራተኛ'],
+        ['admin_worker', 'አስተዳዳሪ ሠራተኛ'],
+        ['admin', 'አስተዳዳሪ'],
+        ['super_admin', 'ዋና አስተዳዳሪ']
+      ].filter(([v]) => actorIsSuper || v === 'worker' || v === 'admin_worker');
       let html = '';
       users.forEach((u) => {
+        const opts = roleOpts.map(([v, label]) => `<option value="${v}"${u.role === v ? ' selected' : ''}>${label}</option>`).join('');
         html += `
           <div class="trx-card">
             <div class="trx-row">
               <span class="trx-title">👤 ${u.full_name} (@${u.username})</span>
               <span class="badge-tag ${u.role === 'super_admin' ? 'paid' : 'neutral'}">${u.role}</span>
+            </div>
+            <div class="trx-row" style="margin-top:6px;">
+              <select class="form-control" style="flex:1;" onchange="updateUserRole(${u.id}, this.value, this)">${opts}</select>
+              <button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deleteUser(${u.id}, '${u.username}')">🗑️ ሰርዝ</button>
             </div>
           </div>
         `;
@@ -2517,6 +2530,63 @@ async function loadUsers() {
     }
   } catch (e) {
     console.error('Users load error:', e);
+  }
+}
+
+// የአዲስ ተጠቃሚ ሞዳል መክፈት — role dropdown በኣክተሩ role ይጣራል:
+// admin የሚያየው worker + admin_worker ብቻ ነው (admin/super_admin መፍጠር super_admin ብቻ ነው)
+function openNewUserModal() {
+  const sel = document.getElementById('nu-role');
+  if (sel) {
+    const actorIsSuper = currentRole() === 'super_admin';
+    const opts = [
+      ['worker', 'ሠራተኛ (Worker)'],
+      ['admin_worker', 'የአስተዳዳሪ ሠራተኛ (Admin Worker)'],
+      ['admin', 'አስተዳዳሪ (Admin)'],
+      ['super_admin', 'ዋና አስተዳዳሪ (Super Admin)']
+    ].filter(([v]) => actorIsSuper || v === 'worker' || v === 'admin_worker');
+    sel.innerHTML = opts.map(([v, label]) => `<option value="${v}"${v === 'worker' ? ' selected' : ''}>${label}</option>`).join('');
+  }
+  openModal('modal-new-user');
+}
+
+// የተጠቃሚ role መቀየር (server ያረጋግጣል — admin admin/super_admin መስጠት አይችልም)
+async function updateUserRole(userId, newRole, selEl) {
+  const label = selEl && selEl.options[selEl.selectedIndex] ? selEl.options[selEl.selectedIndex].text : newRole;
+  if (!confirm('የተጠቃሚውን ሚና ወደ "' + label + '" መቀየር ይፈልጋሉ?')) { loadUsers(); return; }
+  try {
+    const res = await API.request('auth.php?action=update_permissions', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, role: newRole })
+    });
+    if (res.success) {
+      alert('✅ ሚናው ተቀይሯል');
+    } else {
+      alert(res.error || 'መቀየር አልተሳካም');
+    }
+    loadUsers();
+  } catch (err) {
+    alert('ስህተት: ' + err.message);
+    loadUsers();
+  }
+}
+
+// ተጠቃሚ መሰረዝ (server ያረጋግጣል — የራስ አካውንት እና admin/super_admin አይሰረዝም)
+async function deleteUser(userId, username) {
+  if (!confirm('ተጠቃሚ @' + username + ' ን በእርግጥ መሰረዝ ይፈልጋሉ?')) return;
+  try {
+    const res = await API.request('auth.php?action=delete_user', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId })
+    });
+    if (res.success) {
+      alert('✅ ተጠቃሚው ተሰርዟል');
+      loadUsers();
+    } else {
+      alert(res.error || 'መሰረዝ አልተሳካም');
+    }
+  } catch (err) {
+    alert('ስህተት: ' + err.message);
   }
 }
 

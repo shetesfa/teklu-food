@@ -89,7 +89,8 @@ function get_authenticated_user(): array {
 /**
  * የተጠቃሚ ሚናዎች (Roles) — ደረጃ (hierarchy): super_admin > admin > admin_worker > worker
  * - super_admin: ሁሉም ነገር (everything) — user management, Backup, settings.
- * - admin: የቀን ተቀን ሞጁሎች + user management ለ worker/admin_worker ብቻ (Backup/settings የለም).
+ * - admin: የቀን ተቀን ሞጁሎች + user management ለ worker/admin_worker ብቻ
+ *   (Backup/settings የለም — Backup super_admin ብቻ ነው)።
  * - admin_worker: POS, ምግብ add/edit, ክምችት view + receiving, ወጪ add, suppliers/customers view.
  * - worker: POS + ምግብ/ክምችት view ብቻ።
  * 'manager' የሚለው አሮጌ ሚና ወደ 'admin' ተቀይሯል (migration 002) — እዚህ እንደ admin ይቆጠራል።

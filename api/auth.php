@@ -188,11 +188,15 @@ if ($action === 'update_permissions') {
     // የአስተዳዳሪ ገደብ: admin/super_admin አካውንት መንካት ወይም role ወደ admin/super_admin መቀየር አይቻልም
     assert_can_manage_user($user, $oldUser, $new_role ?: null);
 
-    $fields = ["permissions = :permissions"];
-    $params = [
-        ':permissions' => json_encode($permissions, JSON_UNESCAPED_UNICODE),
-        ':id'          => $target_user_id
-    ];
+    // permissions የሚለው መስክ ሲላክ ብቻ ይዘምናል — role ብቻ ሲቀየር (ለምሳሌ ከ UI)
+    // ያለውን permissions JSON እንዳይጠፋ እንከላከላለን
+    $fields = [];
+    $params = [':id' => $target_user_id];
+
+    if (array_key_exists('permissions', $data)) {
+        $fields[] = "permissions = :permissions";
+        $params[':permissions'] = json_encode($permissions, JSON_UNESCAPED_UNICODE);
+    }
 
     if ($new_role !== null && $new_role !== '') {
         $fields[] = "role = :role";
@@ -202,6 +206,10 @@ if ($action === 'update_permissions') {
     if ($is_active !== null) {
         $fields[] = "is_active = :is_active";
         $params[':is_active'] = $is_active;
+    }
+
+    if (empty($fields)) {
+        send_error('ምንም የሚቀየር መስክ አልተገለጸም');
     }
 
     $sql = "UPDATE users SET " . implode(', ', $fields) . ", updated_at = NOW() WHERE id = :id";
