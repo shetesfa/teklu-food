@@ -17,8 +17,15 @@ $pdo = get_db_connection();
 $action = $_GET['action'] ?? 'list';
 
 // 1. የእውቂያዎች ዝርዝር (አቅራቢዎች እና ደንበኞች)
+// worker / admin_worker: ደንበኞች ብቻ (POS credit sale ይፈልጋል) —
+// አቅራቢዎችም ሆነ outstanding_balance አይመለስም።
 if ($action === 'list') {
+    $role = normalize_role($user['role'] ?? '');
+    $restricted = in_array($role, ['worker', 'admin_worker'], true);
     $type = $_GET['type'] ?? null;
+    if ($restricted) {
+        $type = 'customer';
+    }
     $sql = "SELECT * FROM contacts WHERE 1=1";
     $params = [];
     if ($type && in_array($type, ['customer', 'supplier'], true)) {
@@ -30,14 +37,20 @@ if ($action === 'list') {
     $stmt->execute($params);
     $contacts = $stmt->fetchAll();
     foreach ($contacts as &$c) {
-        $c['outstanding_balance'] = (float)$c['outstanding_balance'];
+        if ($restricted) {
+            unset($c['outstanding_balance']);
+        } else {
+            $c['outstanding_balance'] = (float)$c['outstanding_balance'];
+        }
     }
 
     send_success('የእውቂያዎች ዝርዝር', ['contacts' => $contacts]);
 }
 
 // 2. የአቅራቢ ሙሉ የሂሳብ ዝርዝር እና ታሪክ (Supplier Account Details & History / Statement)
+// — super_admin + admin ብቻ
 if ($action === 'supplier_statement') {
+    require_admin($user);
     $supplier_id = (int)($_GET['supplier_id'] ?? 0);
     if ($supplier_id <= 0) {
         send_error('የአቅራቢ መለያ አልተገለጸም');
@@ -151,7 +164,9 @@ if ($action === 'supplier_statement') {
 }
 
 // 2.1 የደንበኛ ሙሉ የዱቤ ዝርዝር እና ታሪክ (Customer Debt Statement & Order History)
+// — super_admin + admin ብቻ (የዱቤ ገጽም ለእነሱ ብቻ ነው)
 if ($action === 'customer_statement') {
+    require_admin($user);
     $customer_id = (int)($_GET['customer_id'] ?? 0);
     if ($customer_id <= 0) {
         send_error('የደንበኛ መለያ አልተገለጸም');
@@ -471,3 +486,4 @@ if ($action === 'settle_debt') {
 }
 
 send_error('ያልታወቀ ክንውን', 404);
+
