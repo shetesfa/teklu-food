@@ -17,13 +17,15 @@ $pdo = get_db_connection();
 $action = $_GET['action'] ?? 'list';
 
 // 1. የእውቂያዎች ዝርዝር (አቅራቢዎች እና ደንበኞች)
-// worker / admin_worker: ደንበኞች ብቻ (POS credit sale ይፈልጋል) —
-// አቅራቢዎችም ሆነ outstanding_balance አይመለስም።
+// worker: ደንበኞች ብቻ (POS credit sale ይፈልጋል)።
+// admin_worker: የተጠየቀውን type ያገኛል (receiving የሚያስፈልገው የአቅራቢ ስሞች
+// ጨምሮ) — ግን outstanding_balance አያይም።
+// super_admin + admin: ሙሉ ዝርዝር ከ balance ጋር።
 if ($action === 'list') {
     $role = normalize_role($user['role'] ?? '');
-    $restricted = in_array($role, ['worker', 'admin_worker'], true);
+    $stripBalance = in_array($role, ['worker', 'admin_worker'], true);
     $type = $_GET['type'] ?? null;
-    if ($restricted) {
+    if ($role === 'worker') {
         $type = 'customer';
     }
     $sql = "SELECT * FROM contacts WHERE 1=1";
@@ -37,7 +39,7 @@ if ($action === 'list') {
     $stmt->execute($params);
     $contacts = $stmt->fetchAll();
     foreach ($contacts as &$c) {
-        if ($restricted) {
+        if ($stripBalance) {
             unset($c['outstanding_balance']);
         } else {
             $c['outstanding_balance'] = (float)$c['outstanding_balance'];
