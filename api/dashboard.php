@@ -12,8 +12,9 @@ require_once __DIR__ . '/../helpers/auth.php';
 
 $user = get_authenticated_user();
 
-// Dashboard totals are admin-level data — worker (POS only) gets 403.
-require_admin_worker($user);
+// Dashboard is daily-work data — every staff role (incl. worker) may view it.
+// (Worker does all daily work; the manager controls users/backup/settings.)
+require_daily_worker($user);
 
 $pdo = get_db_connection();
 

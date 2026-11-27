@@ -16,9 +16,9 @@ $action = $_GET['action'] ?? 'status';
 
 $closing_date = $_GET['date'] ?? date('Y-m-d');
 
-// 1. የዕለቱን የሂሳብ ሁኔታ ማጠቃለያ (Get Daily Status) — Admin ብቻ
+// 1. የዕለቱን የሂሳብ ሁኔታ ማጠቃለያ (Get Daily Status) — የዕለት ሠራተኞች ሁሉ (worker ጭምር)
 if ($action === 'status') {
-    require_admin($user);
+    require_daily_worker($user);
     // የተዘጋ መዝገብ ካለ መመልከት
     $stmtClosed = $pdo->prepare("
         SELECT dc.*, u.full_name as closed_by_name, r.full_name as reopened_by_name
@@ -77,9 +77,9 @@ if ($action === 'status') {
     ]);
 }
 
-// 2. ዕለታዊ ሂሳብ መዝጋት (Close Day) — Admin ብቻ (worker/admin_worker አይችሉም)
+// 2. ዕለታዊ ሂሳብ መዝጋት (Close Day) — የዕለት ሠራተኞች ሁሉ (worker ጭምር)፤ ዳግም መክፈት super_admin ብቻ ነው
 if ($action === 'close') {
-    require_admin($user);
+    require_daily_worker($user);
     $data = get_request_data();
     $actual_cash = (float)($data['actual_cash'] ?? 0.0);
     $actual_cbe = (float)($data['actual_cbe'] ?? 0.0);

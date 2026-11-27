@@ -92,7 +92,9 @@ function get_authenticated_user(): array {
  * - admin: የቀን ተቀን ሞጁሎች + user management ለ worker/admin_worker ብቻ
  *   (Backup/settings የለም — Backup super_admin ብቻ ነው)።
  * - admin_worker: POS, ምግብ add/edit, ክምችት view + receiving, ወጪ add, suppliers/customers view.
- * - worker: POS + ምግብ/ክምችት view ብቻ።
+ * - worker: ሁሉም የዕለት ሥራ (daily work) — POS, ምግብ add/edit, receiving, ወጪ add,
+ *   ዳሽቦርድ፣ ሪፖርቶች፣ ዕለታዊ መዝጊያ። (user management / Backup / settings የለም —
+ *   እነዚያ የአስተዳዳሪ ቁጥጥር ናቸው።)
  * 'manager' የሚለው አሮጌ ሚና ወደ 'admin' ተቀይሯል (migration 002) — እዚህ እንደ admin ይቆጠራል።
  */
 const ROLE_RANKS = [
@@ -125,6 +127,13 @@ function require_admin_worker(array $user): void {
     }
 }
 
+/** ደረጃው >= worker (ማንኛውም ንቁ የሰራተኛ role — super_admin / admin / admin_worker / worker) መሆኑን ያረጋግጣል */
+function require_daily_worker(array $user): void {
+    if (role_rank($user['role'] ?? '') < 1) {
+        send_error('ይህ ክንውን ለሰራተኞች ብቻ የተፈቀደ ነው', 403);
+    }
+}
+
 function require_super_admin(array $user): void {
     if (normalize_role($user['role'] ?? '') !== 'super_admin') {
         send_error('ይህ ክንውን ለዋና አስተዳዳሪ (Super Admin) ብቻ የተፈቀደ ነው', 403);
@@ -143,21 +152,21 @@ function check_permission(array $user, string $permission_name): bool {
     }
 
     $rolePermissions = [
-        // ሪፖርቶች (P&L) — admin ብቻ
-        'can_view_pl'       => ['admin'],
-        // ዕለታዊ ሂሳብ መዝጊያ — admin ብቻ
-        'daily_closing'     => ['admin'],
+        // ሪፖርቶች (P&L) — admin + worker (worker የዕለት ሥራውን ሁሉ ያደርጋል)
+        'can_view_pl'       => ['admin', 'worker'],
+        // ዕለታዊ ሂሳብ መዝጊያ — admin + worker
+        'daily_closing'     => ['admin', 'worker'],
         // የተጠቃሚዎች አስተዳደር — admin ብቻ (ተጨማሪ የዒላማ ሚና ገደብ በ can_manage_user ይፈተናል)
         'user_manage'       => ['admin'],
         // ምትኬ እና ቅንብሮች — super_admin ብቻ (ከላይ ተመልሷል)
         'backup'            => [],
         'settings'          => [],
-        // ምግብ/ሬሲፒ መፍጠር እና ማስተካከል — admin_workerም ጭምር
-        'food_manage'       => ['admin', 'admin_worker'],
-        // ወጪ መመዝገብ — admin_workerም ጭምር
-        'expenses_add'      => ['admin', 'admin_worker'],
-        // እቃ መረከብ (goods receiving) — admin_workerም ጭምር
-        'receiving'         => ['admin', 'admin_worker'],
+        // ምግብ/ሬሲፒ መፍጠር እና ማስተካከል — admin_worker እና workerም ጭምር
+        'food_manage'       => ['admin', 'admin_worker', 'worker'],
+        // ወጪ መመዝገብ — admin_worker እና workerም ጭምር
+        'expenses_add'      => ['admin', 'admin_worker', 'worker'],
+        // እቃ መረከብ (goods receiving) — admin_worker እና workerም ጭምር
+        'receiving'         => ['admin', 'admin_worker', 'worker'],
         // ገንዘብ መውጣት — admin ብቻ
         'withdrawals'       => ['admin'],
         // አቅራቢ/ደንበኛ መፍጠር እና ማስተካከል — admin ብቻ

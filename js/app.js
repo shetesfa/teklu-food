@@ -77,30 +77,23 @@ function initAppLayout() {
     const isAdmin = isSuperAdmin || role === 'admin';
     const isAdminWorker = isAdmin || role === 'admin_worker';
     const hideEl = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
-    // የተጠቃሚዎች ቁጥጥር: super_admin + admin ብቻ
+    // የተጠቃሚዎች ቁጥጥር: super_admin + admin ብቻ (worker አይችልም)
     if (!isAdmin) hideEl('btn-users-management');
-    // ሪፖርቶች + ዕለታዊ መዝጊያ: super_admin + admin ብቻ
-    if (!isAdmin) { hideEl('btn-reports-menu'); hideEl('btn-closing-menu'); }
+    // ሪፖርቶች + ዕለታዊ መዝጊያ: super_admin + admin + worker (worker የዕለት ሥራውን ሁሉ ያደርጋል)
+    if (!isAdmin && role !== 'worker') { hideEl('btn-reports-menu'); hideEl('btn-closing-menu'); }
     // ደንበኞች: worker አይችልም (admin_worker ማየት ይችላል)
     if (!isAdminWorker) hideEl('btn-customers-menu');
     // የደንበኛ ዱቤ ገጽ: super_admin + admin ብቻ
     if (!isAdmin) hideEl('nav-debts');
     // ምትኬ: super_admin ብቻ
     if (!isSuperAdmin) hideEl('btn-backup-menu');
-    // ዳሽቦርድ: worker አይችልም — POS + ምግብ/ክምችት እይታ ብቻ
-    if (role === 'worker') { hideEl('nav-dashboard'); hideEl('nav-dashboard-mobile'); }
-    // worker ምንም የተጨማሪ ሞጁል ስለሌለው የ"ተጨማሪ" አሰሳውን ሙሉ በሙሉ ደብቅ
-    if (!isAdminWorker) hideEl('nav-more');
+    // ዳሽቦርድ እና "ተጨማሪ" አሰሳ ለሁሉም ሚናዎች ክፍት ናቸው (worker ሪፖርት + መዝጊያ ስላለው)።
   }
 
   // የመነሻ ዳታዎችን መጫን
   loadInitialData();
-  // worker: ዳሽቦርድ አይታይም — መግቢያ በኋላ በቀጥታ ወደ ሽያጭ (POS) ገጽ
-  if (currentRole() === 'worker') {
-    switchPage('page-pos', document.getElementById('nav-pos') || document.getElementById('nav-pos-mobile'));
-  } else {
-    loadDashboard('today');
-  }
+  // መግቢያ በኋላ ወደ ዳሽቦርድ (ለሁሉም ሚናዎች — worker ጭምር)
+  loadDashboard('today');
 }
 
 // 2. የመነሻ መረጃዎችን መጫን (Load Initial Base Data - Offline-First Cache & Sync)
@@ -2532,10 +2525,11 @@ function showSubModule(subId) {
   const isSuperAdmin = role === 'super_admin';
   const isAdmin = isSuperAdmin || role === 'admin';
   const isAdminWorker = isAdmin || role === 'admin_worker';
+  const isWorker = role === 'worker';
   const allowed =
     (subId === 'sub-users' && isAdmin) ||
-    (subId === 'sub-reports' && isAdmin) ||
-    (subId === 'sub-closing' && isAdmin) ||
+    (subId === 'sub-reports' && (isAdmin || isWorker)) ||
+    (subId === 'sub-closing' && (isAdmin || isWorker)) ||
     (subId === 'sub-customers' && isAdminWorker) ||
     (subId === 'sub-backup' && isSuperAdmin);
   if (!allowed) {
