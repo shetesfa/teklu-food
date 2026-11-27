@@ -247,8 +247,58 @@ if ($action === 'delete_user') {
 
     assert_can_manage_user($user, $oldUser);
 
-    $stmt = $pdo->prepare("DELETE FROM users WHERE id = :id");
-    $stmt->execute([':id' => $target_user_id]);
+    // የንግድ እንቅስቃሴ ማረጋገጫ — ይህ ተጠቃሚ ሽያጭ / ግዢ / ክፍያ / ወጪ / ማውጫ /
+    // የክምችት እንቅስቃሴ / የዕለት መዝጊያ ከመዘገበ፣ እነዚያ መዝገቦች የፋይናንስ
+    // ታሪክ ስለሆኑ መሰረዝ አይቻልም። (እነዚህ ሰንጠረዦች users(id) ላይ ያለ
+    // CASCADE የሌለው FOREIGN KEY አላቸው።)
+    $businessReferences = [
+        ['sales', 'created_by'],
+        ['purchases', 'created_by'],
+        ['payments', 'created_by'],
+        ['expenses', 'created_by'],
+        ['withdrawals', 'created_by'],
+        ['stock_movements', 'authorized_by'],
+        ['daily_closings', 'closed_by'],
+        ['daily_closings', 'reopened_by'],
+    ];
+    foreach ($businessReferences as [$refTable, $refColumn]) {
+        $stmtChk = $pdo->prepare("SELECT COUNT(*) FROM {$refTable} WHERE {$refColumn} = :id");
+        $stmtChk->execute([':id' => $target_user_id]);
+        if ((int)$stmtChk->fetchColumn() > 0) {
+            send_error('ይህ ተጠቃሚ የተመዘገበ የንግድ እንቅስቃሴ ስላለው መሰረዝ አይቻልም (This user has recorded business activity and cannot be deleted)');
+        }
+    }
+
+    // የመግቢያ / የመሣሪያ ታሪክ (audit_logs + devices) የተጠቃሚው የግል መዝገብ
+    // ነው — ከተጠቃሚው ጋር አብሮ ይሰረዛል። audit_logs ላይ users(id) የሚያመለክት
+    // ያለ CASCADE FOREIGN KEY ስላለ፣ መጀመሪያ እነዚህን መሰረዝ አለብን፤
+    // አለበለዚያ MySQL 1451 ስህተት ይጥላል። devices ላይ ON DELETE CASCADE
+    // ቢኖርም፣ በግልጽ እንሰርዘዋለን።
+    try {
+        $pdo->beginTransaction();
+
+        $stmtDel = $pdo->prepare("DELETE FROM audit_logs WHERE user_id = :id");
+        $stmtDel->execute([':id' => $target_user_id]);
+
+        $stmtDel = $pdo->prepare("DELETE FROM devices WHERE user_id = :id");
+        $stmtDel->execute([':id' => $target_user_id]);
+
+        $stmt = $pdo->prepare("DELETE FROM users WHERE id = :id");
+        $stmt->execute([':id' => $target_user_id]);
+
+        $pdo->commit();
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('delete_user failed for user ' . $target_user_id . ': ' . $e->getMessage());
+        // 1451 = የውጭ ቁልፍ ገደብ (foreign key constraint) — በፍተሻና
+        // በመሰረዝ መካከል አዲስ መዝገብ ከተፈጠረ ሊከሰት ይችላል።
+        if ((int)($e->errorInfo[1] ?? 0) === 1451) {
+            send_error('ይህ ተጠቃሚ የተመዘገበ የንግድ እንቅስቃሴ ስላለው መሰረዝ አይቻልም (This user has recorded business activity and cannot be deleted)');
+        }
+        send_error('ተጠቃሚውን መሰረዝ አልተሳካም (Failed to delete user)');
+    }
 
     log_audit($user['id'], 'USER_DELETE', 'users', (string)$target_user_id, $oldUser, null);
 
