@@ -27,7 +27,7 @@ $mgrHash = password_hash('Manager@123', PASSWORD_BCRYPT);
 $pdo->prepare("UPDATE users SET password_hash = :p WHERE username = 'admin'")->execute([':p' => $adminHash]);
 $pdo->prepare("UPDATE users SET password_hash = :p WHERE username = 'manager'")->execute([':p' => $mgrHash]);
 
-echo "✅ ስኪማ እና ሲድ ዳታ በንጹህ UTF-8 በተሳካ ሁኔታ ገብቷል!\n";
+echo "ስኪማ እና ሲድ ዳታ በንጹህ UTF-8 በተሳካ ሁኔታ ገብቷል!\n";
 
 // ማረጋገጥ
 $users = $pdo->query("SELECT id, username, full_name, role FROM users")->fetchAll();

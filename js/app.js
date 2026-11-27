@@ -57,7 +57,7 @@ function showSessionExpiredMessage() {
 }
 
 // የአሁኑ ተጠቃሚ role — 'manager' የሚለው አሮጌ role ወደ 'admin' ይቀየራል
-// (migration 002: manager → admin; የድሮ cached session እስኪያልቅ ድረስ)
+// (migration 002: manager to admin; የድሮ cached session እስኪያልቅ ድረስ)
 function currentRole() {
   const r = (API.user && API.user.role) || 'worker';
   return r === 'manager' ? 'admin' : r;
@@ -428,7 +428,7 @@ function renderDashboardUI(d) {
 function renderLowStockAlerts(items) {
   const container = document.getElementById('dash-low-stock-container');
   if (!items || items.length === 0) {
-    container.innerHTML = `<p style="color:#059669; font-size:0.82rem; text-align:center; padding:6px; background:#ecfdf5; border-radius:var(--radius-sm);">✅ ሁሉም ጥሬ እቃዎች በቂ ክምችት አላቸው</p>`;
+    container.innerHTML = `<p style="color:#059669; font-size:0.82rem; text-align:center; padding:6px; background:#ecfdf5; border-radius:var(--radius-sm);">ሁሉም ጥሬ እቃዎች በቂ ክምችት አላቸው</p>`;
     return;
   }
 
@@ -436,7 +436,7 @@ function renderLowStockAlerts(items) {
   items.forEach((it) => {
     html += `
       <div style="display:flex; justify-content:space-between; align-items:center; background:var(--warning-bg); border:1px solid #fde68a; padding:6px 10px; border-radius:var(--radius-sm); font-size:0.82rem;">
-        <span style="font-weight:700; color:#92400e;">⚠️ ${it.name_am}</span>
+        <span style="font-weight:700; color:#92400e;">${it.name_am}</span>
         <span style="font-weight:800; color:#b45309;">ቀሪ፡ ${it.current_stock} ${it.unit} (ዝቅተኛ ማስጠንቀቂያ፡ ${it.min_stock_level})</span>
       </div>
     `;
@@ -463,11 +463,11 @@ function renderPosProducts() {
 
   // Loading / error states instead of a misleading "nothing found".
   if (productsLoadError && globalProducts.length === 0) {
-    grid.innerHTML = '<div class="empty-state">⚠️ የምርቶች ዳታ መጫን አልተሳካም — ገጹን እንደገና ይጫኑ (Refresh)</div>';
+    grid.innerHTML = '<div class="empty-state">የምርቶች ዳታ መጫን አልተሳካም — ገጹን እንደገና ይጫኑ (Refresh)</div>';
     return;
   }
   if (initialDataLoading && globalProducts.length === 0) {
-    grid.innerHTML = '<div class="empty-state">⏳ ምርቶች በመጫን ላይ...</div>';
+    grid.innerHTML = '<div class="empty-state">ምርቶች በመጫን ላይ...</div>';
     return;
   }
 
@@ -712,7 +712,7 @@ async function submitSale() {
     });
 
     if (res.success) {
-      alert('✅ ሽያጩ በተሳካ ሁኔታ ተጠናቋል!');
+      alert('ሽያጩ በተሳካ ሁኔታ ተጠናቋል!');
       showReceipt(res.data, globalCart);
       clearCart();
       loadInitialData(); // ክምችቶችን ማደስ
@@ -724,7 +724,7 @@ async function submitSale() {
         API.updateStatusBadge();
         // No blocking alert(): a stuck alert parks the main thread
         // (and headless/automation flows); show the message in-page.
-        showPosStatus('🌐 ኢንተርኔት የለም፤ ሽያጩ ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! ክምችት ቀንሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
+        showPosStatus('ኢንተርኔት የለም፤ ሽያጩ ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! ክምችት ቀንሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
         showReceipt(offlineSale, globalCart);
         clearCart();
         loadInitialData(); // በአካባቢው የተቀነሰውን ክምችት ማደስ
@@ -827,12 +827,12 @@ function renderReceivingList(purchases) {
     html += `
       <div class="trx-card">
         <div class="trx-row">
-          <span class="trx-title">🏢 ${p.supplier_name || 'ተራ አቅራቢ'}</span>
+          <span class="trx-title">${p.supplier_name || 'ተራ አቅራቢ'}</span>
           <span class="badge-tag ${statusClass}">${statusLabel}</span>
         </div>
-        <div class="trx-items-summary">📦 ${itemsText || 'ዕቃዎች'}</div>
+        <div class="trx-items-summary">${itemsText || 'ዕቃዎች'}</div>
         <div class="trx-row">
-          <span class="trx-date">📅 ${p.purchase_date}</span>
+          <span class="trx-date">${p.purchase_date}</span>
           <span class="trx-amount">${formatMoney(p.grand_total)}</span>
         </div>
         <div class="trx-row" style="font-size:0.75rem; color:var(--text-secondary); border-top:1px dashed var(--border-color); padding-top:4px;">
@@ -861,7 +861,7 @@ function addReceivingItemRow() {
       </select>
       <input type="number" class="form-control rec-item-qty" placeholder="መጠን" step="0.01" style="flex:1;" oninput="calculateReceivingTotals()" required>
       <input type="number" class="form-control rec-item-cost" placeholder="የአንዱ ዋጋ" step="0.01" style="flex:1;" oninput="calculateReceivingTotals()" required>
-      <button type="button" class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="removeReceivingItemRow('${rowId}')">✕</button>
+      <button type="button" class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="removeReceivingItemRow('${rowId}')">ሰርዝ</button>
     </div>
   `;
   container.insertAdjacentHTML('beforeend', rowHtml);
@@ -976,7 +976,7 @@ async function handleReceiveGoods(e) {
     });
 
     if (res.success) {
-      alert(`✅ እቃው በተሳካ ሁኔታ ተረክቧል! ክምችት ጨምሯል።\nየአቅራቢው አሁን ያለ ጠቅላላ ዕዳ: ${formatMoney(res.data.supplier_total_debt)}`);
+      alert(`እቃው በተሳካ ሁኔታ ተረክቧል! ክምችት ጨምሯል።\nየአቅራቢው አሁን ያለ ጠቅላላ ዕዳ: ${formatMoney(res.data.supplier_total_debt)}`);
       closeModal('modal-receive-goods');
       document.getElementById('rec-items-container').innerHTML = '';
       loadReceivingData();
@@ -987,7 +987,7 @@ async function handleReceiveGoods(e) {
         // ከመስመር ውጭ እቃዎችን በክምችት መደመር፣ የአቅራቢ ዕዳ ማስላት እና ወረፋ መያዝ
         const offlineRec = await DB.applyOfflineReceiving(payload);
         API.updateStatusBadge();
-        alert('🌐 ኢንተርኔት የለም፤ እቃ ርክክቡ ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! ክምችት ጨምሯል፤ የአቅራቢ ዕዳ ታድሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
+        alert('ኢንተርኔት የለም፤ እቃ ርክክቡ ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! ክምችት ጨምሯል፤ የአቅራቢ ዕዳ ታድሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
         closeModal('modal-receive-goods');
         document.getElementById('rec-items-container').innerHTML = '';
         loadReceivingData(); // በአካባቢው የተመዘገበውን ርክክብ ማሳየት
@@ -1102,9 +1102,9 @@ function renderStatementPurchases(purchases) {
           <span class="trx-title">ርክክብ #${p.id}</span>
           <span class="badge-tag ${statusClass}">${statusLabel}</span>
         </div>
-        <div class="trx-items-summary">📦 ${itemsText}</div>
+        <div class="trx-items-summary">${itemsText}</div>
         <div class="trx-row">
-          <span class="trx-date">📅 ${p.purchase_date}</span>
+          <span class="trx-date">${p.purchase_date}</span>
           <span class="trx-amount">${formatMoney(p.grand_total)}</span>
         </div>
         <div class="trx-row" style="font-size:0.75rem; border-top:1px dashed var(--border-color); padding-top:4px;">
@@ -1129,7 +1129,7 @@ function renderStatementPayments(payments) {
     html += `
       <div class="trx-card" style="border-left:3px solid var(--primary);">
         <div class="trx-row">
-          <span class="trx-title">💳 የተከፈለ ክፍያ</span>
+          <span class="trx-title">የተከፈለ ክፍያ</span>
           <span class="badge-tag paid">ተከፍሏል</span>
         </div>
         <div class="trx-row">
@@ -1137,7 +1137,7 @@ function renderStatementPayments(payments) {
           <span style="font-weight:800; color:var(--primary); font-size:0.95rem;">${formatMoney(py.amount)}</span>
         </div>
         <div class="trx-row">
-          <span class="trx-date">📅 ${py.payment_date}</span>
+          <span class="trx-date">${py.payment_date}</span>
           <span style="font-size:0.72rem; color:var(--text-muted);">ፈጻሚ: ${py.paid_by_name || 'Admin'}</span>
         </div>
       </div>
@@ -1207,7 +1207,7 @@ async function handleSupplierPayment(e) {
     });
 
     if (res.success) {
-      alert(`✅ ክፍያው በተሳካ ሁኔታ ተፈጽሟል!\nየአቅራቢው አዲሱ ቀሪ ዕዳ: ${formatMoney(res.data.new_balance)}`);
+      alert(`ክፍያው በተሳካ ሁኔታ ተፈጽሟል!\nየአቅራቢው አዲሱ ቀሪ ዕዳ: ${formatMoney(res.data.new_balance)}`);
       closeModal('modal-supplier-payment');
       viewSupplierStatement(supplierId); // ሂሳቡን ማደስ
       loadDashboard('today');
@@ -1219,7 +1219,7 @@ async function handleSupplierPayment(e) {
           contact_id: supplierId
         });
         API.updateStatusBadge();
-        alert('🌐 ኢንተርኔት የለም፤ ክፍያው ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! የአቅራቢው ዕዳ እና የሂሳብ ሚዛን ቀንሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
+        alert('ኢንተርኔት የለም፤ ክፍያው ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! የአቅራቢው ዕዳ እና የሂሳብ ሚዛን ቀንሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
         closeModal('modal-supplier-payment');
         viewSupplierStatement(supplierId); // በአካባቢው የዘመነውን ሂሳብ ማሳየት
         loadDashboard('today');
@@ -1319,8 +1319,8 @@ function renderFoodRecipes(foods) {
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:8px;">
-          <button class="btn btn-secondary btn-sm" onclick="editFoodRecipe(${f.id})">✏️ አድስ</button>
-          <button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deleteFoodRecipe(${f.id})">🗑️ ሰርዝ</button>
+          <button class="btn btn-secondary btn-sm" onclick="editFoodRecipe(${f.id})">አድስ</button>
+          <button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deleteFoodRecipe(${f.id})">ሰርዝ</button>
         </div>
       </div>
     `;
@@ -1354,7 +1354,7 @@ function addRecipeIngredientRow(selectedIngId = '', qty = '') {
         ${ingOptions}
       </select>
       <input type="number" class="form-control rcp-ing-qty" placeholder="መጠን" step="0.001" style="flex:1;" value="${fmtQty(qty)}" oninput="calculateRecipeProfit()">
-      <button type="button" class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="document.getElementById('${rowId}').remove(); calculateRecipeProfit();">✕</button>
+      <button type="button" class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="document.getElementById('${rowId}').remove(); calculateRecipeProfit();">ሰርዝ</button>
     </div>
   `;
   container.insertAdjacentHTML('beforeend', rowHtml);
@@ -1436,7 +1436,7 @@ async function handleSaveFoodRecipe(e) {
     });
 
     if (res.success) {
-      alert('✅ የምግብ አዘገጃጀቱ (Recipe) በተሳካ ሁኔታ ተቀምጧል!');
+      alert('የምግብ አዘገጃጀቱ (Recipe) በተሳካ ሁኔታ ተቀምጧል!');
       closeModal('modal-create-food-recipe');
       loadFoodRecipes(true);
       refreshPosProducts(); // አዲሱ ምግብ በ POS grid ውስጥ ወዲያውኑ ይታይ (reload ሳያስፈልግ)
@@ -1448,7 +1448,7 @@ async function handleSaveFoodRecipe(e) {
         : globalProducts;
       await DB.applyOfflineRecipe(payload, ingSource);
       API.updateStatusBadge();
-      alert('🌐 ኢንተርኔት የለም፤ ምግቡ ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
+      alert('ኢንተርኔት የለም፤ ምግቡ ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
       closeModal('modal-create-food-recipe');
       loadFoodRecipes(); // በአካባቢው የተመዘገበውን ምግብ ማሳየት
     } else {
@@ -1478,7 +1478,7 @@ function editFoodRecipe(foodId) {
   });
   calculateRecipeProfit();
   const titleEl = document.getElementById('food-modal-title');
-  if (titleEl) titleEl.textContent = '✏️ ምግብ አድስ';
+  if (titleEl) titleEl.textContent = 'ምግብ አድስ';
   openModal('modal-create-food-recipe');
 }
 
@@ -1526,15 +1526,15 @@ async function deleteFoodRecipe(foodId) {
 function renderStockTable() {
   const container = document.getElementById('stock-cards-container');
   const countBadge = document.getElementById('products-count-badge');
-  countBadge.textContent = (initialDataLoading && globalProducts.length === 0) ? '⏳ በመጫን ላይ...' : `${globalProducts.length} ምርቶች`;
+  countBadge.textContent = (initialDataLoading && globalProducts.length === 0) ? 'በመጫን ላይ...' : `${globalProducts.length} ምርቶች`;
 
   // Loading / error states instead of a misleading "0 products".
   if (productsLoadError && globalProducts.length === 0) {
-    container.innerHTML = `<p style="color:var(--danger); text-align:center; padding:16px;">⚠️ የምርቶች ዳታ መጫን አልተሳካም — ገጹን እንደገና ይጫኑ (Refresh)</p>`;
+    container.innerHTML = `<p style="color:var(--danger); text-align:center; padding:16px;">የምርቶች ዳታ መጫን አልተሳካም — ገጹን እንደገና ይጫኑ (Refresh)</p>`;
     return;
   }
   if (initialDataLoading && globalProducts.length === 0) {
-    container.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding:16px;">⏳ ምርቶች በመጫን ላይ...</p>`;
+    container.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding:16px;">ምርቶች በመጫን ላይ...</p>`;
     return;
   }
 
@@ -1571,7 +1571,7 @@ function renderStockTable() {
         </div>
         ${isLow ? `
           <div style="font-size:0.72rem; color:var(--danger); font-weight:700;">
-            ⚠️ ዝቅተኛ ክምችት ማስጠንቀቂያ! (ዝቅተኛ ገደብ: ${p.min_stock_level} ${p.unit})
+            ዝቅተኛ ክምችት ማስጠንቀቂያ! (ዝቅተኛ ገደብ: ${p.min_stock_level} ${p.unit})
           </div>
         ` : ''}
       </div>
@@ -1610,7 +1610,7 @@ async function handleCreateProduct(e) {
       body: JSON.stringify(payload)
     });
     if (res.success) {
-      alert('✅ ምርቱ በተሳካ ሁኔታ ተመዝግቧል!');
+      alert('ምርቱ በተሳካ ሁኔታ ተመዝግቧል!');
       closeModal('modal-new-product');
       loadInitialData();
     } else {
@@ -1639,7 +1639,7 @@ async function handleAdjustStock(e) {
       body: JSON.stringify({ product_id: prodId, adjustment_type: adjType, quantity: qty, reason })
     });
     if (res.success) {
-      alert('✅ የክምችት ማስተካከያው ተመዝግቧል!');
+      alert('የክምችት ማስተካከያው ተመዝግቧል!');
       closeModal('modal-adjust-stock');
       loadInitialData();
     } else {
@@ -1693,7 +1693,7 @@ function renderWithdrawalsList(withdrawals) {
     html += `
       <div class="trx-card" style="border-left:3px solid var(--warning);">
         <div class="trx-row">
-          <span class="trx-title">👤 ተቀባይ፡ ${w.recipient_name}</span>
+          <span class="trx-title">ተቀባይ፡ ${w.recipient_name}</span>
           <span class="trx-amount" style="color:var(--warning);">${formatMoney(w.amount)}</span>
         </div>
         <div class="trx-row">
@@ -1701,7 +1701,7 @@ function renderWithdrawalsList(withdrawals) {
           <span class="badge-tag neutral">${w.account_name_am || 'አካውንት'}</span>
         </div>
         <div class="trx-row">
-          <span class="trx-date">📅 ${w.withdrawal_date}</span>
+          <span class="trx-date">${w.withdrawal_date}</span>
           <span style="font-size:0.72rem; color:var(--text-muted);">መዝጋቢ: ${w.created_by_name || 'Admin'}</span>
         </div>
       </div>
@@ -1739,7 +1739,7 @@ async function handleCreateWithdrawal(e) {
       body: JSON.stringify(payload)
     });
     if (res.success) {
-      alert('✅ ገንዘብ መውጣቱ ተመዝግቧል፤ የአካውንቱ ሂሳብ ቀንሷል');
+      alert('ገንዘብ መውጣቱ ተመዝግቧል፤ የአካውንቱ ሂሳብ ቀንሷል');
       closeModal('modal-new-withdrawal');
       loadWithdrawals();
       loadDashboard('today');
@@ -1751,7 +1751,7 @@ async function handleCreateWithdrawal(e) {
           account_name: accObj ? (accObj.name_am || accObj.name_en) : 'ጥሬ ገንዘብ'
         });
         API.updateStatusBadge();
-        alert('🌐 ኢንተርኔት የለም፤ ገንዘብ መውጣቱ ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! የአካውንቱ ሂሳብ ቀንሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
+        alert('ኢንተርኔት የለም፤ ገንዘብ መውጣቱ ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! የአካውንቱ ሂሳብ ቀንሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
         closeModal('modal-new-withdrawal');
         loadWithdrawals(); // በአካባቢው የተመዘገበውን ማሳየት
         loadDashboard('today'); // ዳሽቦርድ ማደስ
@@ -1851,7 +1851,7 @@ function renderExpensesList(expenses) {
           <span class="badge-tag neutral">${ex.account_name_am || 'አካውንት'}</span>
         </div>
         <div class="trx-row">
-          <span class="trx-date">📅 ${ex.expense_date}</span>
+          <span class="trx-date">${ex.expense_date}</span>
           <span style="font-size:0.72rem; color:var(--text-muted);">መዝጋቢ: ${ex.created_by_name || 'Admin'}</span>
         </div>
       </div>
@@ -1889,7 +1889,7 @@ async function handleCreateExpense(e) {
       body: JSON.stringify(payload)
     });
     if (res.success) {
-      alert('✅ የስራ ማስኬጃ ወጪው ተመዝግቧል');
+      alert('የስራ ማስኬጃ ወጪው ተመዝግቧል');
       closeModal('modal-new-expense');
       loadExpenses(true);
       loadDashboard('today');
@@ -1904,7 +1904,7 @@ async function handleCreateExpense(e) {
           account_name: accObj ? (accObj.name_am || accObj.name_en) : 'ጥሬ ገንዘብ'
         });
         API.updateStatusBadge();
-        alert('🌐 ኢንተርኔት የለም፤ ወጪው ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! የአካውንቱ ሂሳብ ቀንሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
+        alert('ኢንተርኔት የለም፤ ወጪው ከመስመር ውጭ በተሳካ ሁኔታ ተመዝግቧል! የአካውንቱ ሂሳብ ቀንሷል። ኢንተርኔት ሲመጣ በራስ-ሰር ይመሳሰላል።');
         closeModal('modal-new-expense');
         loadExpenses(); // በአካባቢው የተመዘገበውን ማሳየት
         loadDashboard('today'); // ዳሽቦርድ ማደስ
@@ -1963,19 +1963,19 @@ function renderSuppliersCards(suppliers) {
     html += `
       <div class="trx-card" style="cursor:pointer;" onclick="viewSupplierStatement(${s.id})">
         <div class="trx-row">
-          <span class="trx-title">🏢 ${s.name}</span>
+          <span class="trx-title">${s.name}</span>
           <span class="badge-tag ${hasDebt ? 'unpaid' : 'paid'}">
             ${hasDebt ? 'ያልተከፈለ ዕዳ አለበት' : 'ዕዳ የለበትም'}
           </span>
         </div>
         <div class="trx-row">
-          <span style="font-size:0.8rem; color:var(--text-secondary);">📞 ${s.phone || '-'} | 📍 ${s.address || '-'}</span>
+          <span style="font-size:0.8rem; color:var(--text-secondary);">${s.phone || '-'} | ${s.address || '-'}</span>
           <span style="font-weight:800; font-size:1rem; color:${hasDebt ? 'var(--danger)' : 'var(--primary)'};">
             ${formatMoney(s.outstanding_balance)}
           </span>
         </div>
         <div style="text-align:right; font-size:0.75rem; color:var(--primary); font-weight:700; margin-top:2px;">
-          ዝርዝር ሂሳብ እና ክፍያ እይ →
+          ዝርዝር ሂሳብ እና ክፍያ እይ
         </div>
       </div>
     `;
@@ -1996,7 +1996,7 @@ async function handleCreateSupplier(e) {
       body: JSON.stringify({ type: 'supplier', name, phone, address, notes })
     });
     if (res.success) {
-      alert('✅ አቅራቢው ተመዝግቧል');
+      alert('አቅራቢው ተመዝግቧል');
       closeModal('modal-new-supplier');
       loadSuppliers();
     } else {
@@ -2046,7 +2046,7 @@ async function handleCreateCustomer(e) {
       await DB.cacheContacts(globalCustomers);
     }
 
-    alert('✅ ደንበኛው ' + name + ' በተሳካ ሁኔታ ተመዝግቧል');
+    alert('ደንበኛው ' + name + ' በተሳካ ሁኔታ ተመዝግቧል');
     closeModal('modal-new-customer');
 
     // ፎርሙን ማጽዳት
@@ -2134,7 +2134,7 @@ function renderCustomerDebtsUI(customers) {
           <div>
             <div style="font-weight:800; font-size:0.95rem; color:var(--text-main);">${c.name}</div>
             <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px;">
-              📞 ${c.phone || 'ስልክ የለም'} ${c.address ? ' | 📍 ' + c.address : ''}
+              ${c.phone || 'ስልክ የለም'} ${c.address ? ' | ' + c.address : ''}
             </div>
           </div>
           <div style="text-align:right;">
@@ -2150,7 +2150,7 @@ function renderCustomerDebtsUI(customers) {
 
         <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px; border-top:1px dashed var(--border-color); padding-top:8px;">
           <button class="btn btn-primary btn-sm" onclick="viewCustomerDebtDetail(${c.id})" style="font-size:0.8rem;">
-            📋 ዝርዝር እና ክፍያ
+            ዝርዝር እና ክፍያ
           </button>
         </div>
       </div>
@@ -2269,7 +2269,7 @@ function renderCustomerStatementDetails(data) {
       html += `
         <div style="background:#fff; border:1px solid var(--border-color); ${cancelled ? 'opacity:0.65;' : ''} padding:8px 10px; border-radius:var(--radius-sm); font-size:0.82rem;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:700; color:var(--text-main);">🍽️ ደረሰኝ #${s.receipt_number}${cancelled ? ' (ተሰርዟል)' : ''}</span>
+            <span style="font-weight:700; color:var(--text-main);">ደረሰኝ #${s.receipt_number}${cancelled ? ' (ተሰርዟል)' : ''}</span>
             <span style="font-size:0.75rem; color:var(--text-muted);">${s.sale_date}</span>
           </div>
           <div style="color:var(--text-secondary); margin:4px 0; font-size:0.78rem;">
@@ -2281,7 +2281,7 @@ function renderCustomerStatementDetails(data) {
           </div>
           <div style="text-align:right; margin-top:4px;">
             <button class="btn btn-outline-primary btn-sm" onclick='showSaleReceiptModal(${JSON.stringify(s).replace(/'/g, "&#39;")})' style="padding:2px 8px; font-size:0.75rem;">
-              🧾 የዱቤ ደረሰኝ
+              የዱቤ ደረሰኝ
             </button>
           </div>
         </div>
@@ -2291,7 +2291,7 @@ function renderCustomerStatementDetails(data) {
       html += `
         <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:8px 10px; border-radius:var(--radius-sm); font-size:0.82rem;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:700; color:#166534;">💰 ክፍያ #${p.reference_id}</span>
+            <span style="font-weight:700; color:#166534;">ክፍያ #${p.reference_id}</span>
             <span style="font-size:0.75rem; color:var(--text-muted);">${p.payment_date}</span>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
@@ -2301,7 +2301,7 @@ function renderCustomerStatementDetails(data) {
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
             <span style="font-size:0.78rem; font-weight:700;">ቀሪ ዕዳ፡ <span style="color:var(--danger);">${formatMoney(running)}</span></span>
             <button class="btn btn-outline-primary btn-sm" onclick='showPaymentVoucherModal(${JSON.stringify(p).replace(/'/g, "&#39;")}, "${data.customer?.name || ''}")' style="padding:2px 8px; font-size:0.75rem;">
-              🧾 የክፍያ ደረሰኝ
+              የክፍያ ደረሰኝ
             </button>
           </div>
         </div>
@@ -2313,7 +2313,7 @@ function renderCustomerStatementDetails(data) {
   // የተሰላ ቀሪ ከተመዘገበው ቀሪ ጋር ማወዳደር (reconciliation check)
   const stored = parseFloat(summary.outstanding_balance || 0);
   if (Math.abs(running - stored) > 0.01) {
-    html += `<div style="margin-top:8px; padding:8px 10px; background:#fef3c7; border:1px solid #fbbf24; border-radius:var(--radius-sm); font-size:0.78rem; color:#92400e;">⚠️ የተሰላ ቀሪ (${formatMoney(running)}) ከተመዘገበው ቀሪ (${formatMoney(stored)}) ይለያል — እባክዎ ይመርምሩ</div>`;
+    html += `<div style="margin-top:8px; padding:8px 10px; background:#fef3c7; border:1px solid #fbbf24; border-radius:var(--radius-sm); font-size:0.78rem; color:#92400e;">የተሰላ ቀሪ (${formatMoney(running)}) ከተመዘገበው ቀሪ (${formatMoney(stored)}) ይለያል — እባክዎ ይመርምሩ</div>`;
   }
   container.innerHTML = html;
 }
@@ -2340,7 +2340,7 @@ function calculateRemainingCustomerDebt() {
   const previewEl = document.getElementById('cust-pay-remaining-preview');
   if (previewEl) {
     if (payAmt >= unpaidBal && unpaidBal > 0) {
-      previewEl.innerHTML = '<span style="color:#059669; font-weight:800;">✅ ሙሉ ዕዳው ይዘጋል (ቀሪ: 0.00 ETB)</span>';
+      previewEl.innerHTML = '<span style="color:#059669; font-weight:800;">ሙሉ ዕዳው ይዘጋል (ቀሪ: 0.00 ETB)</span>';
     } else {
       previewEl.innerHTML = `ቀሪ ያልተከፈለ ዕዳ፡ <strong style="color:var(--danger);">${formatMoney(rem)}</strong> (ከፊል ክፍያ)`;
     }
@@ -2401,7 +2401,7 @@ async function handleCustomerDebtPayment(e) {
       };
     }
 
-    alert('✅ የ' + formatMoney(amount) + ' የዕዳ ክፍያ በተሳካ ሁኔታ ተመዝግቧል');
+    alert('የ' + formatMoney(amount) + ' የዕዳ ክፍያ በተሳካ ሁኔታ ተመዝግቧል');
     closeModal('modal-customer-statement');
 
     // ደረሰኝ ማሳየት
@@ -2566,7 +2566,7 @@ function hideSubModules() {
 async function downloadBackup() {
   const btn = document.getElementById('btn-export-backup');
   const originalLabel = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ እያወረደ ነው...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'እያወረደ ነው...'; }
   try {
     const res = await API.request('backup.php?action=export_json');
     if (!res || res.success === false) {
@@ -2613,12 +2613,12 @@ async function loadUsers() {
         html += `
           <div class="trx-card">
             <div class="trx-row">
-              <span class="trx-title">👤 ${u.full_name} (@${u.username})</span>
+              <span class="trx-title">${u.full_name} (@${u.username})</span>
               <span class="badge-tag ${u.role === 'super_admin' ? 'paid' : 'neutral'}">${u.role}</span>
             </div>
             <div class="trx-row" style="margin-top:6px;">
               <select class="form-control" style="flex:1;" onchange="updateUserRole(${u.id}, this.value, this)">${opts}</select>
-              <button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deleteUser(${u.id}, '${u.username}')">🗑️ ሰርዝ</button>
+              <button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deleteUser(${u.id}, '${u.username}')">ሰርዝ</button>
             </div>
           </div>
         `;
@@ -2657,7 +2657,7 @@ async function updateUserRole(userId, newRole, selEl) {
       body: JSON.stringify({ user_id: userId, role: newRole })
     });
     if (res.success) {
-      alert('✅ ሚናው ተቀይሯል');
+      alert('ሚናው ተቀይሯል');
     } else {
       alert(res.error || 'መቀየር አልተሳካም');
     }
@@ -2677,7 +2677,7 @@ async function deleteUser(userId, username) {
       body: JSON.stringify({ user_id: userId })
     });
     if (res.success) {
-      alert('✅ ተጠቃሚው ተሰርዟል');
+      alert('ተጠቃሚው ተሰርዟል');
       loadUsers();
     } else {
       alert(res.error || 'መሰረዝ አልተሳካም');
@@ -2700,7 +2700,7 @@ async function handleCreateUser(e) {
       body: JSON.stringify({ full_name: fullName, username, password, role })
     });
     if (res.success) {
-      alert('✅ ተጠቃሚው ተፈጥሯል');
+      alert('ተጠቃሚው ተፈጥሯል');
       closeModal('modal-new-user');
       loadUsers();
     } else {
@@ -2721,18 +2721,18 @@ async function loadDailyClosingStatus() {
       const btn = document.getElementById('btn-close-day');
       if (d.is_closed) {
         const by = d.closing_record && d.closing_record.closed_by_name ? ' (' + d.closing_record.closed_by_name + ')' : '';
-        showClosingMsg('✅ የዛሬው ሂሳብ ተዘግቷል' + by, true);
+        showClosingMsg('የዛሬው ሂሳብ ተዘግቷል' + by, true);
         if (btn) btn.disabled = true;
       } else {
         showClosingMsg('', true);
         if (btn) btn.disabled = false;
       }
     } else {
-      showClosingMsg('❌ የዕለቱን ሁኔታ ማግኘት አልተሳካም: ' + (res.error || ''), false);
+      showClosingMsg('የዕለቱን ሁኔታ ማግኘት አልተሳካም: ' + (res.error || ''), false);
     }
   } catch (e) {
     console.error('Closing status error:', e);
-    showClosingMsg('❌ የዕለቱን ሁኔታ ማግኘት አልተሳካም: ' + e.message, false);
+    showClosingMsg('የዕለቱን ሁኔታ ማግኘት አልተሳካም: ' + e.message, false);
   }
 }
 
@@ -2765,7 +2765,7 @@ async function submitDailyClosing() {
   const reason = document.getElementById('closing-discrepancy-reason').value.trim();
 
   if (btn) { btn.disabled = true; btn.textContent = 'በመዝጋት ላይ...'; }
-  showClosingMsg('⏳ የዕለቱ ሂሳብ በመዘጋት ላይ...', true);
+  showClosingMsg('የዕለቱ ሂሳብ በመዘጋት ላይ...', true);
   try {
     const res = await API.request('daily_closing.php?action=close', {
       method: 'POST',
@@ -2777,15 +2777,15 @@ async function submitDailyClosing() {
       })
     });
     if (res.success) {
-      showClosingMsg('✅ የዕለቱ ሂሳብ በተሳካ ሁኔታ ተዘግቷል!', true);
-      alert('✅ የዕለቱ ሂሳብ በተሳካ ሁኔታ ተዘግቷል!');
+      showClosingMsg('የዕለቱ ሂሳብ በተሳካ ሁኔታ ተዘግቷል!', true);
+      alert('የዕለቱ ሂሳብ በተሳካ ሁኔታ ተዘግቷል!');
       loadDailyClosingStatus();
     } else {
-      showClosingMsg('❌ ' + (res.error || 'ሂሳብ መዝጋት አልተሳካም'), false);
+      showClosingMsg('' + (res.error || 'ሂሳብ መዝጋት አልተሳካም'), false);
       alert(res.error || 'ሂሳብ መዝጋት አልተሳካም');
     }
   } catch (err) {
-    showClosingMsg('❌ ስህተት: ' + err.message, false);
+    showClosingMsg('ስህተት: ' + err.message, false);
     alert('ስህተት: ' + err.message);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'የዕለቱን ሂሳብ ዝጋ'; }
@@ -2799,11 +2799,11 @@ async function loadReport(reportType, btnEl = null) {
   }
 
   const container = document.getElementById('reports-content-container');
-  container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">⏳ በመጫን ላይ...</p>';
+  container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">በመጫን ላይ...</p>';
   try {
     const res = await API.request(`reports.php?type=${reportType}`);
     if (res.offline) {
-      container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">📶 ከመስመር ውጭ ነዎት — ሪፖርቱ ኢንተርኔት ሲመጣ ብቻ ነው የሚታየው። እባክዎ ኦንላይን ሆነው እንደገና ይሞክሩ።</p>';
+      container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">ከመስመር ውጭ ነዎት — ሪፖርቱ ኢንተርኔት ሲመጣ ብቻ ነው የሚታየው። እባክዎ ኦንላይን ሆነው እንደገና ይሞክሩ።</p>';
     } else if (res.success) {
       if (reportType === 'pl') {
         const s = res.data.statement;
@@ -2883,7 +2883,7 @@ function loadModernReport(btnEl = null) {
         <div class="form-group"><label class="form-label">የክፍያ ዘዴ (Payment)</label><select id="mr-payment" class="form-control" onchange="runModernReport()"><option value="all">ሁሉም</option><option value="cash">ጥሬ ገንዘብ (Cash)</option><option value="credit">ብድር (Credit)</option><option value="mixed">ድብልቅ (Mixed)</option></select></div>
         <div class="form-group"><label class="form-label">ሠራተኛ (Staff)</label><select id="mr-staff" class="form-control" onchange="runModernReport()"><option value="">ሁሉም ሠራተኞች</option></select></div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="runModernReport()">🔍 ሪፖርቱን አሳይ (Show Report)</button>
+      <button class="btn btn-primary btn-sm" onclick="runModernReport()">ሪፖርቱን አሳይ (Show Report)</button>
       <div id="mr-results" style="margin-top:12px;"></div>
     </div>
   `;
@@ -2944,10 +2944,10 @@ async function runModernReport() {
     payment_method: document.getElementById('mr-payment').value,
     staff_id: document.getElementById('mr-staff').value
   });
-  box.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">⏳ በመጫን ላይ...</p>';
+  box.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">በመጫን ላይ...</p>';
   try {
     const res = await API.request('reports.php?' + q.toString());
-    if (res.offline) { box.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">📶 ከመስመር ውጭ ነዎት — ዘመናዊ ሪፖርቱ ኢንተርኔት ሲመጣ ብቻ ነው የሚታየው። እባክዎ ኦንላይን ሆነው እንደገና ይሞክሩ።</p>'; return; }
+    if (res.offline) { box.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:16px;">ከመስመር ውጭ ነዎት — ዘመናዊ ሪፖርቱ ኢንተርኔት ሲመጣ ብቻ ነው የሚታየው። እባክዎ ኦንላይን ሆነው እንደገና ይሞክሩ።</p>'; return; }
     if (!res.success) { box.innerHTML = '<p style="color:var(--danger); text-align:center;">' + (res.error || 'ሪፖርት መጫን አልተሳካም') + '</p>'; return; }
     const s = res.data.summary;
     const payLabel = { cash: 'ጥሬ ገንዘብ', credit: 'ብድር', mixed: 'ድብልቅ' };
@@ -2978,13 +2978,13 @@ async function runModernReport() {
         <div class="stat-box"><div class="stat-label">የሽያጭ ብዛት (Sales)</div><div class="stat-value">${s.sales_count}</div></div>
         <div class="stat-box"><div class="stat-label">ቅናሽ (Discounts)</div><div class="stat-value">${formatMoney(s.discounts)}</div></div>
       </div>
-      <div style="font-weight:700; margin:10px 0 4px;">📅 በቀን ሽያጭ (Sales by Day)</div>
+      <div style="font-weight:700; margin:10px 0 4px;">በቀን ሽያጭ (Sales by Day)</div>
       <div class="table-responsive"><table class="app-table"><thead><tr><th>ቀን</th><th>ብዛት</th><th>ገቢ</th></tr></thead><tbody>${dayRows || '<tr><td colspan="3" style="text-align:center;">ዳታ የለም</td></tr>'}</tbody></table></div>
-      <div style="font-weight:700; margin:10px 0 4px;">🏆 ከፍተኛ ምርቶች በገቢ (Top Products)</div>
+      <div style="font-weight:700; margin:10px 0 4px;">ከፍተኛ ምርቶች በገቢ (Top Products)</div>
       <div class="table-responsive"><table class="app-table"><thead><tr><th>ምርት</th><th>የተሸጠ</th><th>ሽያጭ</th><th>ትርፍ</th></tr></thead><tbody>${topRows || '<tr><td colspan="4" style="text-align:center;">ዳታ የለም</td></tr>'}</tbody></table></div>
-      <div style="font-weight:700; margin:10px 0 4px;">💸 ወጪ በምድብ (Expenses by Category)</div>
+      <div style="font-weight:700; margin:10px 0 4px;">ወጪ በምድብ (Expenses by Category)</div>
       <div class="table-responsive"><table class="app-table"><thead><tr><th>ምድብ</th><th>ብዛት</th><th>መጠን</th></tr></thead><tbody>${expRows || '<tr><td colspan="3" style="text-align:center;">ዳታ የለም</td></tr>'}</tbody></table></div>
-      <div style="font-weight:700; margin:10px 0 4px;">🧾 የሽያጭ ዝርዝር (Sales List — የቅርብ 50)</div>
+      <div style="font-weight:700; margin:10px 0 4px;">የሽያጭ ዝርዝር (Sales List — የቅርብ 50)</div>
       <div class="table-responsive"><table class="app-table"><thead><tr><th>ደረሰኝ</th><th>ቀን</th><th>ደንበኛ</th><th>ሠራተኛ</th><th>ክፍያ</th><th>ጠቅላላ</th></tr></thead><tbody>${saleRows || '<tr><td colspan="6" style="text-align:center;">ዳታ የለም</td></tr>'}</tbody></table></div>
     `;
   } catch (e) {

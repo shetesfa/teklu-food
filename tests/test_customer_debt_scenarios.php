@@ -22,12 +22,12 @@ function assert_test(string $name, bool $condition, string $details = '') {
     global $passed, $failed;
     if ($condition) {
         $passed++;
-        echo "✅ [አልፏል / PASS] $name\n";
-        if ($details) echo "    ↳ $details\n";
+        echo "[አልፏል / PASS] $name\n";
+        if ($details) echo "    - $details\n";
     } else {
         $failed++;
-        echo "❌ [ወድቋል / FAIL] $name\n";
-        if ($details) echo "    ↳ $details\n";
+        echo "[ወድቋል / FAIL] $name\n";
+        if ($details) echo "    - $details\n";
     }
 }
 

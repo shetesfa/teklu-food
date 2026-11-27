@@ -24,12 +24,12 @@ function assert_test(string $title, bool $condition, string $details = ''): void
     global $passCount, $failCount;
     if ($condition) {
         $passCount++;
-        echo "✅ [አልፏል / PASS] $title\n";
-        if (!empty($details)) echo "    ↳ $details\n";
+        echo "[አልፏል / PASS] $title\n";
+        if (!empty($details)) echo "    - $details\n";
     } else {
         $failCount++;
-        echo "❌ [ወድቋል / FAIL] $title\n";
-        if (!empty($details)) echo "    ↳ $details\n";
+        echo "[ወድቋል / FAIL] $title\n";
+        if (!empty($details)) echo "    - $details\n";
     }
 }
 
@@ -349,9 +349,9 @@ echo "  የወደቁ ፍተሻዎች (Failed): {$failCount}\n";
 echo "=========================================================================\n";
 
 if ($failCount === 0) {
-    echo "🎉 ሁሉም {$passCount} ፍተሻዎች 100% በተሳካ ሁኔታ አልፈዋል! ሲስተሙ ሙሉ በሙሉ አስተማማኝ ነው።\n\n";
+    echo "ሁሉም {$passCount} ፍተሻዎች 100% በተሳካ ሁኔታ አልፈዋል! ሲስተሙ ሙሉ በሙሉ አስተማማኝ ነው።\n\n";
     exit(0);
 } else {
-    echo "⚠️ {$failCount} ፍተሻዎች አልተሳኩም፤ እባክዎ ስህተቶቹን ይመርምሩ።\n\n";
+    echo "{$failCount} ፍተሻዎች አልተሳኩም፤ እባክዎ ስህተቶቹን ይመርምሩ።\n\n";
     exit(1);
 }
