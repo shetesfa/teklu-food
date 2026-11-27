@@ -379,6 +379,39 @@ const DB = {
   },
 
   // =========================================================================
+  // 11b. ከመስመር ውጭ መግቢያ ማረጋገጫ (Offline Login Verifier)
+  // =========================================================================
+  // ሰርቨር ከሌለ (ኦፍላይን) የይለፍ ቃል ማረጋገጥ አይቻልም — ስለዚህ በተሳካ
+  // ኦንላይን መግቢያ በኋላ የይለፍ ቃሉን SHA-256 ማረጋገጫ (verifier) ብቻ
+  // እንቀምጣለን፤ የተጠቃሚ ስም እንደ salt ይጠቀማል። የይለፍ ቃሉ ራሱ
+  // በጭራሽ አይቀመጥም። የተጠቃሚው role እና ሙሉ ስምም ከ verifier ጋር
+  // ይቀመጣሉ፣ ከመስመር ውጭ ሲገቡ የ UI የፈቃድ ገደቦች በተመሳሳይ
+  // እንዲሰሩ። የተቀመጠው verifier ከመግቢያ ሲወጡ አይሰረዝም — መሣሪያው
+  // አንድ ጊዜ ኦንላይን ከገባ በኋላ ከመስመር ውጭም መግባት እንዲቻል ነው፤
+  // ያለ ትክክለኛ የይለፍ ቃል ማንኛውም መግቢያ አይቻልም። የይለፍ ቃል
+  // ሲቀየር አዲስ ኦንላይን መግቢያ verifier-ውን ያድሳል።
+  async cacheOfflineCredentials(username, verifier, user) {
+    if (!this.instance) await this.init();
+    return this._putOne('auth_cache', {
+      key: 'offline_creds_' + String(username).toLowerCase(),
+      username: String(username).toLowerCase(),
+      verifier,
+      user_id: user.id,
+      role: user.role,
+      full_name: user.full_name,
+      saved_at: Date.now()
+    });
+  },
+
+  async getOfflineCredentials(username) {
+    return this._getOne('auth_cache', 'offline_creds_' + String(username || '').toLowerCase());
+  },
+
+  async clearOfflineCredentials(username) {
+    return this._deleteOne('auth_cache', 'offline_creds_' + String(username || '').toLowerCase());
+  },
+
+  // =========================================================================
   // 12. ከመስመር ውጭ በቅጽበት እይታን ማደሻ (Optimistic Offline Local Updates)
   // =========================================================================
 

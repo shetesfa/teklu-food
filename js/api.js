@@ -81,6 +81,11 @@ const API = {
         // እንመልሳለን፤ handleLogin() ስህተቱን በ #login-error-alert ውስጥ ያሳያል።
         const isLoginRequest = endpoint.includes('auth.php') && endpoint.includes('action=login');
         if (this.token && !isLoginRequest) {
+          // ቶከኑ ሲንክ በሚደረግበት ጊዜ ከሰርቨር ሲreject — reload ከመደረጉ
+          // በፊት ምልክት አስቀምጥ፤ በመግቢያ ስክሪን ላይ "ክፍለ ጊዜው አልቋል፤
+          // ኦንላይን ሆነው እንደገና ይግቡ" የሚለው መልእክት ይታያል። ያልተመሳሰሉ
+          // ግብይቶች በ IndexedDB sync_queue ውስጥ ይቀመጣሉ — አይጠፉም።
+          try { sessionStorage.setItem('teklu_session_expired', '1'); } catch (e) {}
           this.logout();
           throw new Error(data.error || 'ክፍለ ጊዜው አልቋል፤ እባክዎ እንደገና ይግቡ');
         }
@@ -123,6 +128,8 @@ const API = {
       this.user = res.data.user;
       localStorage.setItem('teklu_token', this.token);
       localStorage.setItem('teklu_user', JSON.stringify(this.user));
+      try { sessionStorage.removeItem('teklu_session_expired'); } catch (e) {}
+      try { sessionStorage.removeItem('teklu_offline_session'); } catch (e) {}
 
       // ከመስመር ውጭ ለመጠቀም መሸጎጥ — best-effort ብቻ። IndexedDB ችግር
       // (ለምሳሌ "The database connection is closing") መግቢያው ስኬታማ
@@ -132,8 +139,77 @@ const API = {
       } catch (cacheErr) {
         console.warn('Auth cache failed (ignored):', cacheErr);
       }
+      // ከመስመር ውጭ መግቢያ ማረጋገጫ አድስ — የይለፍ ቃል ከተቀየረ ከመስመር
+      // ውጭም አዲሱ ብቻ ነው የሚሰራው (አሮጌው verifier አይሰራም)።
+      await this.cacheOfflineCredentials(username, password, this.user);
+      return res;
+    }
+
+    // ኔትወርክ ብቻ ሲቋረጥ (ሰርቨሩ ሲደርስና ሲreject አይደለም) — በአካባቢው
+    // የተቀመጠ ማረጋገጫ ሞክር። ሰርቨሩ የይለፍ ቃሉን ሲreject (401/403)
+    // ወደዚህ አንደርስም — የተቀየረ የይለፍ ቃል በአሮጌው verifier ማለፍ አይችልም።
+    if (res.offline) {
+      return this.tryOfflineLogin(username, password);
     }
     return res;
+  },
+
+  // ከመስመር ውጭ መግቢያ — የይለፍ ቃል ማረጋገጫ (SHA-256፣ የተጠቃሚ ስም
+  // እንደ salt)። 1000 ዙር ማዞር (iteration) — ከተሰረቀ መሣሪያ ላይ
+  // በፍጥነት መሞከር (brute force) እንዳይቻል። በ cache እና በ login ጊዜ
+  // ተመሳሳይ ስሌት ስለሚሰራ ውጤቱ ሁልጊዜ አንድ ነው። crypto.subtle
+  // የሚገኘው በ secure context (https) ብቻ ነው — ካልተገኘ null ይመልሳል።
+  async hashOfflinePassword(username, password) {
+    if (!window.crypto || !crypto.subtle) return null;
+    const enc = new TextEncoder();
+    let buf = await crypto.subtle.digest('SHA-256', enc.encode(String(username).toLowerCase() + '\n' + password));
+    for (let i = 1; i < 1000; i++) {
+      buf = await crypto.subtle.digest('SHA-256', buf);
+    }
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  },
+
+  async cacheOfflineCredentials(username, password, user) {
+    try {
+      const verifier = await this.hashOfflinePassword(username, password);
+      if (!verifier) return;
+      await DB.cacheOfflineCredentials(username, verifier, user);
+    } catch (e) {
+      console.warn('Offline credentials cache failed (ignored):', e);
+    }
+  },
+
+  // ከመስመር ውጭ መግቢያ — ሰርቨሩ በማይደረስበት ጊዜ ብቻ ነው የሚሞከረው
+  // (API.login ውስጥ res.offline ሲሆን ብቻ)።
+  async tryOfflineLogin(username, password) {
+    try {
+      const rec = await DB.getOfflineCredentials(username);
+      if (!rec || !rec.verifier) {
+        return { success: false, offline: true, error: 'ከመስመር ውጭ መግቢያ በዚህ መሣሪያ ላይ ገና አልተዘጋጀም፤ እባክዎ ኦንላይን ሆነው አንድ ጊዜ ይግቡ' };
+      }
+      const hash = await this.hashOfflinePassword(username, password);
+      if (!hash || hash !== rec.verifier) {
+        return { success: false, offline: true, error: 'የተሳሳተ የተጠቃሚ ስም ወይም የይለፍ ቃል' };
+      }
+      // ማረጋገጫ ተሳክቷል — የአካባቢ ክፍለ ጊዜ ፍጠር (ከመስመር ውጭ)
+      this.user = { id: rec.user_id, username: rec.username, role: rec.role, full_name: rec.full_name };
+      // ለኋላ ማመሳሰያ የመጨረሻውን የሰርቨር ቶከን እንደገና ተጠቀም
+      let cachedToken = '';
+      try {
+        const cached = await DB.getCachedAuth();
+        if (cached && cached.token) cachedToken = cached.token;
+      } catch (e) { /* ቶከን ከሌለ sync እስኪገቡ ድረስ ይጠብቃል */ }
+      this.token = cachedToken;
+      this.isOnline = false;
+      localStorage.setItem('teklu_user', JSON.stringify(this.user));
+      if (cachedToken) localStorage.setItem('teklu_token', cachedToken);
+      else localStorage.removeItem('teklu_token');
+      try { sessionStorage.setItem('teklu_offline_session', '1'); } catch (e) {}
+      return { success: true, offline: true, data: { user: this.user } };
+    } catch (e) {
+      console.warn('Offline login failed:', e);
+      return { success: false, offline: true, error: 'ከመስመር ውጭ መግቢያ አልተሳካም፤ እባክዎ ኦንላይን ይግቡ' };
+    }
   },
 
   // Logout must also clear the IndexedDB auth cache: the boot code
@@ -175,6 +251,9 @@ const API = {
       });
 
       if (res.success && res.data) {
+        // ሲንክ ተሳክቷል — የሰርቨር ቶከኑ ይሰራል፤ ከመስመር ውጭ የመግቢያ
+        // ምልክቱን አጽዳ (በኋላ 401 ቢመጣ session-expired መልእክቱ ይታያል)
+        try { sessionStorage.removeItem('teklu_offline_session'); } catch (e) {}
         if (res.data.synced_uuids && res.data.synced_uuids.length > 0) {
           await DB.markTransactionsSynced(res.data.synced_uuids);
           // An offline-created food whose UUID sync.php confirmed is

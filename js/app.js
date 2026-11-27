@@ -30,12 +30,31 @@ window.addEventListener('DOMContentLoaded', async () => {
       initAppLayout();
     } else {
       document.getElementById('login-screen').classList.add('active');
+      showSessionExpiredMessage();
       return;
     }
   } else {
     initAppLayout();
   }
 });
+
+// ሰርቨሩ ቶከኑን ሲreject ሲንክ ሲደረግ — reload ከተደረገ በኋላ በመግቢያ
+// ስክሪን ላይ ግልጽ መልእክት አሳይ። ያልተመሳሰሉ ግብይቶች በ IndexedDB
+// sync_queue ውስጥ ይቀመጣሉ — ምንም አይጠፋም፤ በሚቀጥለው ኦንላይን
+// መግቢያ ይመሳሰላሉ።
+function showSessionExpiredMessage() {
+  let expired = false;
+  try {
+    expired = sessionStorage.getItem('teklu_session_expired') === '1';
+    sessionStorage.removeItem('teklu_session_expired');
+  } catch (e) {}
+  if (!expired) return;
+  const errBox = document.getElementById('login-error-alert');
+  if (errBox) {
+    errBox.textContent = 'ክፍለ ጊዜው አልቋል፤ እባክዎ ኦንላይን ሆነው እንደገና ይግቡ — ያልተመሳሰሉ ግብይቶችዎ ተቀምጠዋል';
+    errBox.style.display = 'block';
+  }
+}
 
 // የአሁኑ ተጠቃሚ role — 'manager' የሚለው አሮጌ role ወደ 'admin' ይቀየራል
 // (migration 002: manager → admin; የድሮ cached session እስኪያልቅ ድረስ)
