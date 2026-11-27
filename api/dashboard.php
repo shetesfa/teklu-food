@@ -11,6 +11,10 @@ require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/auth.php';
 
 $user = get_authenticated_user();
+
+// Dashboard totals are admin-level data — worker (POS only) gets 403.
+require_admin_worker($user);
+
 $pdo = get_db_connection();
 
 $filter = $_GET['filter'] ?? 'today';
